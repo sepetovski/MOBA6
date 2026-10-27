@@ -20,7 +20,11 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Air control |  | 0.4 | `data/movement_profile.gd` | Fraction of acceleration. No bleed with an empty wish (ADR-007) |
 | Coyote time | s | 0.10 | `data/movement_profile.gd` | After walking off, not after a jump |
 | Jump buffer | s | 0.12 | `data/movement_profile.gd` | |
-| Slide enter speed | m/s | 5 | `data/movement_profile.gd` | |
+| Slide enter speed | m/s | 4 | `data/movement_profile.gd` | A 6 m/s run slides on Ctrl. Crouch walk stays at 3 m/s, under this line |
+| Air jumps |  | 1 | `data/movement_profile.gd` | One extra jump after leaving the ground |
+| Air jump height | m | 1.0 | `data/movement_profile.gd` | Apex of that extra jump |
+| Wall jump height | m | 1.15 | `data/movement_profile.gd` | Upward part of a wall kick |
+| Wall jump push | m/s | 7 | `data/movement_profile.gd` | Horizontal kick away from the wall. Refreshes the air jump |
 | Slide boost | m/s | 1.5 | `data/movement_profile.gd` | Added on a pressed entry, not on a landing entry |
 | Slide friction | m/s² | 6 | `data/movement_profile.gd` | Flat ground. A 6 m/s entry travels about 4.04 m |
 | Slide min speed | m/s | 2.5 | `data/movement_profile.gd` | |

@@ -20,9 +20,14 @@ class_name MovementProfile extends Resource
 @export var air_control := 0.4          # 0..1
 @export var coyote_time := 0.10         # s
 @export var jump_buffer := 0.12         # s
+@export var air_jumps := 1              # extra jumps after leaving the ground, one means a double jump
+@export var air_jump_height := 1.0      # m, apex of that extra jump
+@export var wall_jump_height := 1.15    # m, upward kick off a wall
+@export var wall_jump_push := 7.0       # m/s, horizontal kick away from the wall
+@export var wall_jump_normal_y := 0.45  # a contact flatter than this is a wall, not a floor
 
 @export_group("Slide")
-@export var slide_enter_speed := 5.0    # m/s needed to start a slide
+@export var slide_enter_speed := 4.0    # m/s needed to start a slide. A run is 6 m/s, so Ctrl while running slides
 @export var slide_boost := 1.5          # m/s added on entry
 @export var slide_friction := 6.0       # m/s² on flat ground
 @export var slide_min_speed := 2.5      # m/s, slide ends below this
