@@ -43,6 +43,9 @@ var _slide_dir := Vector3(0, 0, -1)
 var _air_reference_speed := 0.0
 var _jump_start_y := 0.0
 var _jumped_this_step := false
+var _air_jumps_left := 0
+var _takeoff_height := 1.3
+var _wall_push := Vector3.ZERO
 var _was_on_floor := false
 var _step_keep := Vector3.ZERO
 var _did_step := false
@@ -149,6 +152,8 @@ func reset_motion() -> void:
 	_repathed = false
 	_stuck_emitted = false
 	_air_reference_speed = 0.0
+	_air_jumps_left = profile.air_jumps
+	_wall_push = Vector3.ZERO
 	_body.velocity = Vector3.ZERO
 	_set_capsule(profile.height_stand)
 	_set_state(State.GROUNDED)
@@ -274,9 +279,18 @@ func _try_jump(intent: MovementIntent) -> bool:
 		return false
 	if state == State.CROUCHED and not _headroom_clear():
 		return false
+	if state == State.AIRBORNE and not _body.is_on_floor() and _coyote_left <= 0.0:
+		if not intent.jump_pressed:
+			return false
+		var wall := _wall_normal()
+		if wall != Vector3.ZERO:
+			return _begin_wall_jump(wall)
+		if _air_jumps_left <= 0:
+			_jump_buffer_left = profile.jump_buffer
+			return false
+		_air_jumps_left -= 1
+		return _begin_air_jump(profile.air_jump_height)
 	var grounded_enough := _body.is_on_floor() or _coyote_left > 0.0 or state == State.GROUNDED or state == State.CROUCHED or state == State.SLIDING
-	if state == State.AIRBORNE:
-		grounded_enough = _body.is_on_floor() or _coyote_left > 0.0
 	if not grounded_enough:
 		if intent.jump_pressed:
 			_jump_buffer_left = profile.jump_buffer
@@ -284,24 +298,66 @@ func _try_jump(intent: MovementIntent) -> bool:
 	if state == State.CROUCHED:
 		_set_capsule(profile.height_stand)
 		_set_state(State.GROUNDED)
+	return _begin_air_jump(profile.jump_height)
+
+
+func _begin_air_jump(height: float) -> bool:
 	_coyote_left = 0.0
 	_jump_buffer_left = 0.0
+	_wall_push = Vector3.ZERO
+	_takeoff_height = height
 	_air_reference_speed = get_horizontal_speed()
 	_jumped_this_step = true
 	if state == State.SLIDING:
 		_slide_cd_left = profile.slide_cooldown
+		_air_jumps_left = profile.air_jumps
+	elif state != State.AIRBORNE:
+		_air_jumps_left = profile.air_jumps
 	_set_state(State.AIRBORNE)
 	return true
 
 
+func _begin_wall_jump(wall: Vector3) -> bool:
+	_coyote_left = 0.0
+	_jump_buffer_left = 0.0
+	_takeoff_height = profile.wall_jump_height
+	_wall_push = wall * profile.wall_jump_push
+	var along := _flat_velocity() - wall * _flat_velocity().dot(wall)
+	_set_horizontal(along * 0.35 + _wall_push)
+	_air_reference_speed = maxf(get_horizontal_speed(), profile.wall_jump_push)
+	_air_jumps_left = profile.air_jumps
+	_jumped_this_step = true
+	_set_state(State.AIRBORNE)
+	return true
+
+
+func _wall_normal() -> Vector3:
+	if not _body.is_on_wall():
+		return Vector3.ZERO
+	var best := Vector3.ZERO
+	var best_horiz := 0.0
+	for index in _body.get_slide_collision_count():
+		var normal: Vector3 = _body.get_slide_collision(index).get_normal()
+		var horizontal := Vector2(normal.x, normal.z).length()
+		if normal.y < profile.wall_jump_normal_y and horizontal > best_horiz:
+			best = normal
+			best_horiz = horizontal
+	if best_horiz < 0.5:
+		return Vector3.ZERO
+	return Vector3(best.x, 0.0, best.z).normalized()
+
+
 func _try_slide(intent: MovementIntent) -> bool:
-	if not can_crouch or not intent.crouch_slide_pressed:
+	if not can_crouch or _slide_cd_left > 0.0:
 		return false
-	if not _body.is_on_floor() or _slide_cd_left > 0.0:
+	if not _body.is_on_floor():
+		return false
+	# A press slides immediately when fast. Holding Ctrl also slides once a run is up to speed.
+	if not intent.crouch_slide_pressed and not intent.crouch_slide_held:
 		return false
 	if get_horizontal_speed() < profile.slide_enter_speed:
 		return false
-	_begin_slide(true)
+	_begin_slide(intent.crouch_slide_pressed)
 	return true
 
 
@@ -353,6 +409,10 @@ func _apply_locomotion(intent: MovementIntent, dt: float, takeoff: bool) -> void
 	if takeoff:
 		_jump_start_y = _body.global_position.y
 		_body.velocity.y = _takeoff_speed()
+		if _wall_push != Vector3.ZERO:
+			var along := _flat_velocity() - _wall_push.normalized() * _flat_velocity().dot(_wall_push.normalized())
+			_set_horizontal(along * 0.35 + _wall_push)
+			_wall_push = Vector3.ZERO
 	if _should_cut(intent):
 		_cut_rise()
 	if state == State.AIRBORNE or takeoff:
@@ -381,7 +441,7 @@ func _cut_rise() -> void:
 
 
 func _takeoff_speed() -> float:
-	return sqrt(2.0 * profile.gravity * profile.jump_height)
+	return sqrt(2.0 * profile.gravity * _takeoff_height)
 
 
 func _gravity_accel() -> float:
@@ -515,6 +575,7 @@ func _post_contact(intent: MovementIntent, was_air: bool, fall_vy: float) -> voi
 	if was_air and _body.is_on_floor():
 		var fall_speed := maxf(-fall_vy, 0.0)
 		landed.emit(fall_speed)
+		_air_jumps_left = profile.air_jumps
 		if _jump_buffer_left > 0.0:
 			_jump_buffer_left = maxf(_jump_buffer_left, 0.05)
 		if can_crouch and intent.crouch_slide_held and get_horizontal_speed() >= profile.slide_enter_speed and _slide_cd_left <= 0.0:

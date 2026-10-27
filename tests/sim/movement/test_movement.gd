@@ -5,6 +5,54 @@ extends GutTest
 const APEX_TOLERANCE := 0.065
 
 
+func test_double_jump_is_once() -> void:
+	var world := _world()
+	var harness := _harness()
+	harness.build_boxes(world, [{"center": Vector3(0, -0.2, 0), "size": Vector3(8, 0.4, 8)}])
+	var unit := harness.spawn_unit(world, Vector3(0, 0.05, 0))
+	var first := MovementIntent.new()
+	first.jump_pressed = true
+	first.jump_held = true
+	var second := MovementIntent.new()
+	second.jump_pressed = true
+	second.jump_held = true
+	var third := MovementIntent.new()
+	third.jump_pressed = true
+	third.jump_held = true
+	harness.run(unit, [[0, first], [18, second], [28, third]], 90)
+	await harness.wait_done()
+	assert_between(harness.max_height(), 1.9, 3.2, "one extra jump should lift past the single apex")
+	world.free()
+
+
+func test_wall_jump_kicks_away() -> void:
+	var world := _world()
+	var harness := _harness()
+	harness.build_boxes(world, [
+		{"center": Vector3(0, -0.2, 0), "size": Vector3(12, 0.4, 8)},
+		{"center": Vector3(1.3, 1.6, 0), "size": Vector3(0.4, 3.2, 4)},
+	])
+	var unit := harness.spawn_unit(world, Vector3(0.2, 0.05, 0))
+	harness.hook = func(frame: int, body: GymUnit, _intent: MovementIntent) -> void:
+		if frame < 8:
+			body.velocity.x = 6.0
+	var hop := MovementIntent.new()
+	hop.jump_pressed = true
+	hop.jump_held = true
+	var kick := MovementIntent.new()
+	kick.jump_pressed = true
+	kick.jump_held = true
+	harness.run(unit, [[0, hop], [8, kick]], 24)
+	await harness.wait_done()
+	var kicked := false
+	for sample in harness.trace:
+		var velocity: Vector3 = sample["velocity"]
+		if int(sample["frame"]) > 8 and velocity.x < -1.0:
+			kicked = true
+	assert_true(kicked, "jumping against the wall should kick back to the left")
+	world.free()
+
+
 func test_full_hold_jump_apex() -> void:
 	var height := await _jump_apex(true)
 	assert_almost_eq(height, 1.3, APEX_TOLERANCE, "full hold apex")
