@@ -1,0 +1,99 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/input/input_sandbox.gd" id="1_sandbox"]
+
+[sub_resource type="GDScript" id="mover"]
+script/source = "extends Node
+
+## TEMP path follower for the input gym. Deleted with the scene when M4 lands.
+## 6 m/s matches the planned run speed. MOVE_TO uses the navmesh. STEER walks straight at the point.
+
+const SPEED := 6.0
+
+var _unit: Node3D
+var _region: NavigationRegion3D
+var _path := PackedVector3Array()
+var _steer := false
+var _steer_point := Vector3.ZERO
+var _nav_ready := false
+
+
+func _ready() -> void:
+	var sandbox := get_parent()
+	if sandbox.has_signal(\"navigation_ready\"):
+		sandbox.navigation_ready.connect(_on_nav)
+	await sandbox.ready
+	_unit = sandbox.get_node(\"Unit\") as Node3D
+	_region = sandbox.get_node(\"Navigation\") as NavigationRegion3D
+	if bool(sandbox.get(\"nav_is_ready\")):
+		_nav_ready = true
+
+
+func _on_nav() -> void:
+	_nav_ready = true
+
+
+func receive(cmd: Command) -> void:
+	if _unit == null:
+		return
+	if cmd.kind == Command.Kind.MOVE_TO:
+		_steer = false
+		_set_path(cmd.point)
+		print(\"sandbox MOVE_TO \", cmd.point)
+	elif cmd.kind == Command.Kind.STEER:
+		_steer = cmd.pressed
+		if cmd.pressed:
+			_steer_point = cmd.point
+			_path = PackedVector3Array()
+		print(\"sandbox STEER pressed=\", cmd.pressed, \" \", cmd.point)
+	elif cmd.kind == Command.Kind.STOP:
+		_steer = false
+		_path = PackedVector3Array()
+		print(\"sandbox STOP\")
+	else:
+		print(\"sandbox kind=\", cmd.kind, \" pressed=\", cmd.pressed)
+
+
+func _set_path(target: Vector3) -> void:
+	if not _nav_ready or _region == null or _unit == null:
+		_path = PackedVector3Array()
+		_path.append(target)
+		return
+	var map: RID = _region.get_navigation_map()
+	_path = NavigationServer3D.map_get_path(map, _unit.global_position, target, true)
+	if _path.is_empty():
+		_path.append(target)
+
+
+func _physics_process(delta: float) -> void:
+	if _unit == null:
+		return
+	var dest := Vector3.ZERO
+	var has_dest := false
+	if _steer:
+		dest = _steer_point
+		has_dest = true
+	elif not _path.is_empty():
+		dest = _path[0]
+		has_dest = true
+	if not has_dest:
+		return
+	var current := _unit.global_position
+	var flat := Vector3(dest.x, current.y, dest.z)
+	var offset := flat - current
+	var distance := offset.length()
+	if distance < 0.05:
+		if not _steer and not _path.is_empty():
+			_path.remove_at(0)
+		return
+	var step := minf(SPEED * delta, distance)
+	_unit.global_position = current + offset / distance * step
+	if offset.length_squared() > 0.0001:
+		_unit.look_at(current + Vector3(offset.x, 0.0, offset.z), Vector3.UP)
+"
+
+[node name="InputSandbox" type="Node3D"]
+script = ExtResource("1_sandbox")
+
+[node name="StubMover" type="Node" parent="."]
+script = SubResource("mover")
