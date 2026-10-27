@@ -1,0 +1,7 @@
+.godot/
+.mono/
+*.translation
+/builds/
+/shots/
+.DS_Store
+Thumbs.db
