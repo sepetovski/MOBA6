@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="InputSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/input_settings.gd" id="1_settings"]
+
+[resource]
+script = ExtResource("1_settings")
+hold_threshold = 0.15
+steer_resend_distance = 0.2
+crouch_toggle = false
+confine_mouse = true
+pick_range = 200.0
+ground_slope_deg = 40.0
