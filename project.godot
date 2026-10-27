@@ -143,7 +143,17 @@ debug_freecam={
 3d_physics/layer_7="NavBlock"
 3d_physics/layer_8="Occluders"
 
+[navigation]
+
+3d/default_cell_height=0.1
+3d/default_cell_size=0.2
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=60
 common/physics_interpolation=true
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

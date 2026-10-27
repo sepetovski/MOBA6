@@ -54,6 +54,8 @@ func _apply_display_and_physics() -> void:
 	ProjectSettings.set_setting("physics/common/physics_ticks_per_second", 60)
 	ProjectSettings.set_setting("physics/common/physics_interpolation", true)
 	ProjectSettings.set_setting("rendering/renderer/rendering_method", "forward_plus")
+	ProjectSettings.set_setting("navigation/3d/default_cell_size", 0.2)
+	ProjectSettings.set_setting("navigation/3d/default_cell_height", 0.1)
 
 func _set_action(action: String, binding: Variant) -> void:
 	var event: InputEvent
