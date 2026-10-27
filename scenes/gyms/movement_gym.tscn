@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/movement/gym_builder.gd" id="1_gym"]
+
+[node name="MovementGym" type="Node3D"]
+script = ExtResource("1_gym")
