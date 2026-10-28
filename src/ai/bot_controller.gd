@@ -93,8 +93,17 @@ func _think(unit: SimUnit) -> void:
 		var enemy := _nearest_enemy(unit)
 		if enemy != null:
 			var flat := Vector2(enemy.global_position.x - unit.global_position.x, enemy.global_position.z - unit.global_position.z)
-			if flat.length() <= _config.chase_stop_distance:
-				_command(Command.Kind.STOP, unit.global_position, true)
+			if flat.length() <= unit.combat.attack_range():
+				var cmd := Command.new()
+				cmd.unit_id = _unit_id
+				cmd.kind = Command.Kind.ATTACK_TARGET
+				cmd.target_id = enemy.unit_id
+				cmd.pressed = true
+				cmd.seq = _seq
+				_seq += 1
+				_sim.submit_command(cmd)
+				if _rng.randf() < 0.12 and not unit.combat.opens_with_dash():
+					_cast(unit, 0)
 			else:
 				_command(Command.Kind.MOVE_TO, enemy.global_position, true)
 			_maybe_mobility(unit, true)
@@ -154,6 +163,18 @@ func _on_stuck(stuck_id: int) -> void:
 	if _sim.tick - _last_stuck_tick <= window:
 		_command(Command.Kind.JUMP, unit.global_position, true)
 	_last_stuck_tick = _sim.tick
+
+
+func _cast(unit: SimUnit, slot: int) -> void:
+	var cmd := Command.new()
+	cmd.unit_id = _unit_id
+	cmd.kind = Command.Kind.CAST
+	cmd.slot = slot
+	cmd.point = unit.global_position + (-unit.global_basis.z * 4.0)
+	cmd.pressed = true
+	cmd.seq = _seq
+	_seq += 1
+	_sim.submit_command(cmd)
 
 
 func _command(kind: Command.Kind, point: Vector3, pressed: bool) -> void:

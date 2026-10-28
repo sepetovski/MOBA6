@@ -36,6 +36,7 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 	add_child(_readout)
 	for unit in sim.get_units():
 		_add_unit(unit)
+	GameEvents.damage_dealt.connect(_show_damage)
 	_collision_root = Node3D.new()
 	_collision_root.name = "CollisionDebug"
 	sim.get_parent().add_child(_collision_root)
@@ -52,7 +53,7 @@ func _add_unit(unit: SimUnit) -> void:
 	var name_label := Label.new()
 	name_label.name = "Name"
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_label.text = unit.state.display_name
+	name_label.text = "%s %s" % [unit.state.display_name, unit.hero_name]
 	if unit.state.controller == UnitState.Controller.HUMAN:
 		name_label.text += " (you)"
 	name_label.add_theme_font_size_override("font_size", 16)
@@ -124,7 +125,9 @@ func _status() -> String:
 		state_name = "setup"
 	var body := "FPS %.0f\ntick %d\n%s  %.1f s" % [Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds()]
 	if human != null:
-		body += "\n%s  speed %.1f  grounded %s\n%s" % [
+		body += "\n%s  %s\n%s  speed %.1f  grounded %s\n%s" % [
+			human.hero_name,
+			human.combat.ability_line() if human.combat != null else "",
 			MovementMotor.State.keys()[human.motor.state],
 			human.motor.get_horizontal_speed(),
 			"yes" if human.is_on_floor() else "no",
@@ -154,6 +157,26 @@ func _help_text() -> String:
 			names.append(event.as_text())
 		lines.append("%s: %s" % [action, ", ".join(names)])
 	return "\n".join(lines)
+
+
+func _show_damage(_source_id: int, target_id: int, amount: float, _damage_type: int) -> void:
+	if _camera == null or _camera.camera == null:
+		return
+	var unit := _sim.get_unit(target_id)
+	if unit == null:
+		return
+	var label := Label.new()
+	label.text = str(int(round(amount)))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 20)
+	label.position = _camera.camera.unproject_position(unit.global_position + Vector3(0, 2.2, 0))
+	add_child(label)
+	var timer := Timer.new()
+	timer.one_shot = true
+	timer.wait_time = 0.6
+	timer.timeout.connect(label.queue_free)
+	label.add_child(timer)
+	timer.start()
 
 
 func _cheats() -> void:

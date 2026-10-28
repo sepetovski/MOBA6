@@ -8,6 +8,8 @@ var state: UnitState
 var motor: MovementMotor
 var intent := MovementIntent.new()
 var spawn_transform := Transform3D.IDENTITY
+var combat: Combat
+var hero_name := ""
 
 
 func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID) -> void:
@@ -20,8 +22,11 @@ func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID)
 	state.hero_id = hero.id
 	var letter := "A" if team_id == Team.Id.A else "B"
 	state.display_name = "%s%d" % [letter, slot + 1]
+	hero_name = hero.display_name
 	state.max_health = hero.stats.max_health if hero.stats != null else 100.0
 	state.health = state.max_health
+	combat = Combat.new()
+	combat.setup(self, hero)
 	motor = MovementMotor.new(self, profile, nav_map)
 	motor.landed.connect(func(fall_speed: float) -> void: GameEvents.unit_landed.emit(unit_id, fall_speed))
 	motor.stuck.connect(func() -> void: GameEvents.unit_stuck.emit(unit_id))
@@ -46,13 +51,21 @@ func apply_command(cmd: Command) -> void:
 			intent.has_move_target = true
 			intent.move_target = cmd.point
 			intent.steering = false
+			combat.clear_attack()
 		Command.Kind.STEER:
 			intent.steering = cmd.pressed
 			if cmd.pressed:
 				intent.steer_point = cmd.point
 				intent.has_move_target = false
+				combat.clear_attack()
 		Command.Kind.STOP:
 			intent.stop = true
+			combat.clear_attack()
+		Command.Kind.ATTACK_TARGET:
+			combat.attack_target = cmd.target_id
+		Command.Kind.CAST:
+			if cmd.pressed:
+				combat.cast(cmd.slot, cmd.point)
 		Command.Kind.JUMP:
 			if cmd.pressed:
 				intent.jump_pressed = true
@@ -67,8 +80,12 @@ func apply_command(cmd: Command) -> void:
 				intent.crouch_slide_held = false
 
 
-func sim_step(dt: float) -> void:
+func sim_step(dt: float, sim: Simulation) -> void:
+	if combat != null:
+		combat.begin(dt, sim)
 	motor.step(intent, dt)
+	if combat != null:
+		combat.finish()
 	intent.clear_edges()
 	state.move_state = motor.state
 	state.velocity = velocity

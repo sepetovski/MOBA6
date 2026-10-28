@@ -61,6 +61,8 @@ func test_bots_survive_two_minutes() -> void:
 	var listed := simulation.get_units()
 	for i in listed.size():
 		for j in range(i + 1, listed.size()):
+			if not listed[i].state.alive or not listed[j].state.alive:
+				continue
 			var delta := listed[j].global_position - listed[i].global_position
 			delta.y = 0.0
 			assert_gte(delta.length(), 0.4, "units %d and %d overlap" % [listed[i].unit_id, listed[j].unit_id])

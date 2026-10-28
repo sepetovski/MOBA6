@@ -17,7 +17,8 @@ var _order: Array[int] = []
 var _queue: Array[Command] = []
 var _bot_seeds: Dictionary = {}
 var _next_id := 1
-var _hero: HeroDefinition
+var _shots: Array[CombatProjectile] = []
+var _respawn_at: Dictionary = {}
 
 
 func _init() -> void:
@@ -28,7 +29,6 @@ func start_match(config: MatchConfig, arena: Node3D) -> void:
 	_config = config
 	_arena = arena
 	_info = arena.get_node("ArenaInfo") as ArenaInfo
-	_hero = load("res://data/heroes/gray_gladiator.tres") as HeroDefinition
 	rng.seed = config.match_seed
 	_set_match_state(Match.State.SETUP)
 	_spawn_roster()
@@ -153,7 +153,10 @@ func _physics_process(_delta: float) -> void:
 	for id in _order:
 		var unit := _units[id] as SimUnit
 		if unit != null and unit.state.alive:
-			unit.sim_step(step)
+			unit.sim_step(step, self)
+	_step_projectiles(step)
+	_revive_ready()
+	_keep_inside()
 	_separate(step)
 	if record_tick_cost:
 		_tick_times.append(Time.get_ticks_usec() - started)
@@ -210,12 +213,109 @@ func _spawn_roster() -> void:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.A and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(_hero, Team.Id.A, slot, controller)
+		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.A, slot, controller)
 	for slot in 6:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.B and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(_hero, Team.Id.B, slot, controller)
+		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.B, slot, controller)
+
+
+func deal_damage(source_id: int, target_id: int, amount: float) -> void:
+	var unit := get_unit(target_id)
+	if unit == null or not unit.state.alive or amount <= 0.0:
+		return
+	unit.state.health = maxf(unit.state.health - amount, 0.0)
+	GameEvents.damage_dealt.emit(source_id, target_id, amount, 0)
+	if unit.state.health > 0.0:
+		return
+	unit.state.alive = false
+	unit.motor.can_move = false
+	unit.combat.clear_attack()
+	GameEvents.unit_died.emit(target_id, source_id)
+	_respawn_at[target_id] = tick + 6 * GameConfig.TICK_RATE
+
+
+func launch_projectile(owner: SimUnit, aim_at: Vector3, direction: Vector3, speed: float, damage: float) -> void:
+	var shot := CombatProjectile.new()
+	shot.position = owner.global_position + Vector3(0.0, 1.1, 0.0)
+	shot.origin = shot.position
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	if flat.length_squared() < 0.01:
+		flat = Vector3(aim_at.x - shot.position.x, 0.0, aim_at.z - shot.position.z)
+	shot.velocity = flat.normalized() * speed
+	shot.damage = damage
+	shot.team = owner.team
+	shot.owner_id = owner.unit_id
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.22
+	mesh.height = 0.44
+	var visual := MeshInstance3D.new()
+	visual.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(0.9, 0.9, 0.9)
+	visual.material_override = material
+	visual.position = shot.position
+	add_child(visual)
+	shot.mesh = visual
+	_shots.append(shot)
+
+
+func _step_projectiles(dt: float) -> void:
+	var keep: Array[CombatProjectile] = []
+	for shot in _shots:
+		shot.position += shot.velocity * dt
+		if shot.mesh != null:
+			shot.mesh.global_position = shot.position
+		var spent := shot.position.distance_to(shot.origin) > 28.0
+		if not spent:
+			for unit in get_units():
+				if not unit.state.alive or unit.team == shot.team:
+					continue
+				var reach := shot.radius + unit.motor.profile.radius
+				if unit.global_position.distance_to(shot.position) <= reach + 0.6:
+					deal_damage(shot.owner_id, unit.unit_id, shot.damage)
+					spent = true
+					break
+		if spent:
+			if shot.mesh != null:
+				shot.mesh.queue_free()
+		else:
+			keep.append(shot)
+	_shots = keep
+
+
+func _revive_ready() -> void:
+	var due: Array[int] = []
+	for key in _respawn_at.keys():
+		if tick >= int(_respawn_at[key]):
+			due.append(int(key))
+	for id in due:
+		_respawn_at.erase(id)
+		var unit := get_unit(id)
+		if unit == null:
+			continue
+		unit.state.alive = true
+		unit.state.health = unit.state.max_health
+		unit.place_at(unit.spawn_transform)
+		unit.motor.reset_motion()
+		unit.set_frozen(_match.state != Match.State.RUNNING)
+		unit.combat.clear_attack()
+
+
+func _keep_inside() -> void:
+	for unit in get_units():
+		if not unit.state.alive:
+			continue
+		var point := unit.global_position
+		var in_tunnel := absf(point.z) <= 4.2 and absf(point.x) >= 38.0 and absf(point.x) <= 49.2
+		var inside := in_tunnel or _info.contains_xz(Vector2(point.x, point.z))
+		if inside and point.y > -1.0 and point.y < 8.0:
+			continue
+		unit.place_at(unit.spawn_transform)
+		unit.motor.reset_motion()
+		unit.set_frozen(_match.state != Match.State.RUNNING)
 
 
 func _separate(dt: float) -> void:

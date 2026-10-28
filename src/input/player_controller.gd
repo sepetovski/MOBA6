@@ -68,6 +68,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_released(&"crouch_slide"):
 		_on_crouch_release()
 		_mark_handled()
+	elif event.is_action_pressed(&"ability_1"):
+		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 0)
+		_mark_handled()
+	elif event.is_action_pressed(&"ability_2"):
+		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 1)
+		_mark_handled()
 
 
 func _physics_process(delta: float) -> void:
@@ -99,6 +105,10 @@ func _begin_click() -> void:
 	_right_down = true
 	_held_time = 0.0
 	_steering = false
+	var unit_hit := _pick_unit()
+	if unit_hit != null and unit_hit.hit and unit_hit.unit_id != _unit_id:
+		_emit(Command.Kind.ATTACK_TARGET, unit_hit.position, true, unit_hit.unit_id)
+		return
 	var result := _pick_world()
 	if result == null or not result.hit:
 		return
@@ -135,7 +145,7 @@ func _clear_hold() -> void:
 	_steering = false
 
 
-func _emit(kind: Command.Kind, point: Vector3, pressed: bool) -> void:
+func _emit(kind: Command.Kind, point: Vector3, pressed: bool, target_id := -1, slot := -1) -> void:
 	var cmd := Command.new()
 	cmd.tick = 0
 	cmd.seq = _seq
@@ -144,9 +154,18 @@ func _emit(kind: Command.Kind, point: Vector3, pressed: bool) -> void:
 	cmd.kind = kind
 	cmd.point = point
 	cmd.pressed = pressed
+	cmd.target_id = target_id
+	cmd.slot = slot
 	command_issued.emit(cmd)
 	if _sink.is_valid():
 		_sink.call(cmd)
+
+
+func _pick_unit() -> CursorPicker.PickResult:
+	var picker := _ensure_picker()
+	if picker == null:
+		return null
+	return picker.pick_unit(_cursor_position())
 
 
 func _pick_world() -> CursorPicker.PickResult:
