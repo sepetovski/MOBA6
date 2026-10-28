@@ -651,7 +651,9 @@ func _update_facing(dt: float) -> void:
 		direction = _slide_dir
 	if direction.length_squared() < 0.04:
 		return
-	var target := atan2(direction.x, -direction.z)
+	# Godot yaw θ points the nose (−Z) along (−sin θ, −cos θ). The X term is negated
+	# so the mouse on the left faces left, not the mirror of it.
+	var target := atan2(-direction.x, -direction.z)
 	var max_step := deg_to_rad(profile.turn_rate_deg) * dt
 	var delta := wrapf(target - _body.rotation.y, -PI, PI)
 	_body.rotation.y += clampf(delta, -max_step, max_step)

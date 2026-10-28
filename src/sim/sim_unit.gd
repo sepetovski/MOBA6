@@ -93,6 +93,8 @@ func sim_step(dt: float, sim: Simulation) -> void:
 	motor.step(intent, dt)
 	if combat != null:
 		combat.finish()
+	if motor.state == MovementMotor.State.SLIDING or motor.state == MovementMotor.State.FORCED:
+		sim.damage_props(global_position, motor.profile.radius + 0.35, 40.0, false)
 	intent.clear_edges()
 	state.move_state = motor.state
 	state.velocity = velocity

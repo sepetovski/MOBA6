@@ -314,7 +314,7 @@ func _revive_ready() -> void:
 		unit.combat.clear_attack()
 
 
-func damage_props(point: Vector3, radius: float, amount: float) -> bool:
+func damage_props(point: Vector3, radius: float, amount: float, hit_towers := true) -> bool:
 	var hit := false
 	var props := _arena.get_node_or_null("Navigation/Props")
 	if props != null:
@@ -331,15 +331,16 @@ func damage_props(point: Vector3, radius: float, amount: float) -> bool:
 				child.queue_free()
 			else:
 				child.set_meta("health", left)
-	for tower in _towers:
-		if tower.health <= 0.0:
-			continue
-		var flat := tower.global_position - point
-		flat.y = 0.0
-		if flat.length() > radius + 1.4:
-			continue
-		hit = true
-		tower.hurt(amount)
+	if hit_towers:
+		for tower in _towers:
+			if tower.health <= 0.0:
+				continue
+			var flat := tower.global_position - point
+			flat.y = 0.0
+			if flat.length() > radius + 1.4:
+				continue
+			hit = true
+			tower.hurt(amount)
 	return hit
 
 

@@ -138,15 +138,16 @@ static func world_aabb(placement: PropPlacement) -> AABB:
 
 static func _fill(body: StaticBody3D, prop_type: StringName) -> void:
 	var material := GreyMaterials.get_material(PROP_ALBEDO)
+	var breakable := GreyMaterials.get_material(0.22)
 	match prop_type:
 		&"crate_s":
-			_box(body, Vector3(1, 1, 1), material)
+			_box(body, Vector3(1, 1, 1), breakable)
 		&"crate_m":
-			_box(body, Vector3(1.5, 1.5, 1.5), material)
+			_box(body, Vector3(1.5, 1.5, 1.5), breakable)
 		&"crate_l":
 			_box(body, Vector3(2, 2, 2), material)
 		&"crate_flat":
-			_box(body, Vector3(2, 0.5, 1), material)
+			_box(body, Vector3(2, 0.5, 1), breakable)
 		&"barrel":
 			_cylinder(body, 0.45, 1.0, Vector3.ZERO, material)
 		&"barrel_cluster":
