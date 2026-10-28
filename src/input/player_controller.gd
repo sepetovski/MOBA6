@@ -23,6 +23,7 @@ var _last_steer := Vector3.ZERO
 var _cursor := Vector2.ZERO
 var _cursor_valid := false
 var _crouched := false
+var face_cursor := false
 
 
 func _init() -> void:
@@ -78,6 +79,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_confine_mouse()
+	if enabled and face_cursor:
+		var aim: Variant = _ground_point()
+		if aim is Vector3:
+			_emit(Command.Kind.AIM, aim, true)
 	if not enabled:
 		_clear_hold()
 		return

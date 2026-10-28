@@ -33,7 +33,10 @@ func _ready() -> void:
 	add_child(player)
 	if human != null:
 		player.bind(human.unit_id, camera, simulation.submit_command)
+		player.face_cursor = true
 		player.enabled = false
+		if player.settings != null:
+			player.settings.confine_mouse = false
 	var fader := OcclusionFader.new()
 	fader.name = "OcclusionFader"
 	add_child(fader)

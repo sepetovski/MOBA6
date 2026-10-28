@@ -19,6 +19,8 @@ var _distance := 28.0
 var _distance_target := 28.0
 var _bounds := AABB()
 var _has_bounds := false
+var _drag := false
+var _drag_from := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -85,12 +87,31 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _is_zoom_out(event):
 		_nudge_zoom(1.0)
 		_mark_handled()
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_MIDDLE:
+		_drag = (event as InputEventMouseButton).pressed
+		_drag_from = (event as InputEventMouseButton).position
+		if _drag:
+			set_locked(false)
+		_mark_handled()
+	elif _drag and event is InputEventMouseMotion:
+		var motion := event as InputEventMouseMotion
+		var before: Variant = screen_to_ground(_drag_from)
+		var after: Variant = screen_to_ground(motion.position)
+		_drag_from = motion.position
+		if before is Vector3 and after is Vector3:
+			var shift := (before as Vector3) - (after as Vector3)
+			shift.y = 0.0
+			_goal += shift
+			_focus += shift
+		_mark_handled()
 
 
 func _process(delta: float) -> void:
 	var tuned := _profile()
 	_distance = _approach(_distance, _distance_target, tuned.zoom_smooth, delta)
 	_apply_rig()
+	if _locked and _edge_velocity() != Vector3.ZERO:
+		set_locked(false)
 	if not _locked:
 		var velocity := _pan_velocity()
 		if velocity != Vector3.ZERO:

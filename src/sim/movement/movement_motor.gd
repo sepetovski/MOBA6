@@ -637,9 +637,17 @@ func _clear_goal(emit_arrived: bool) -> void:
 		arrived.emit()
 
 
+var _aim := Vector3.ZERO
+
+
+func set_aim(direction: Vector3) -> void:
+	var flat := Vector3(direction.x, 0.0, direction.z)
+	_aim = flat.normalized() if flat.length_squared() > 0.0001 else Vector3.ZERO
+
+
 func _update_facing(dt: float) -> void:
-	var direction := _flat_velocity()
-	if state == State.SLIDING:
+	var direction := _aim if _aim != Vector3.ZERO else _flat_velocity()
+	if _aim == Vector3.ZERO and state == State.SLIDING:
 		direction = _slide_dir
 	if direction.length_squared() < 0.04:
 		return

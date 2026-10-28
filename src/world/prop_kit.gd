@@ -16,6 +16,9 @@ static func build(placement: PropPlacement) -> StaticBody3D:
 	body.collision_layer = GameConfig.LAYER_PROPS
 	body.collision_mask = 0
 	body.set_meta("prop_type", placement.prop_type)
+	if placement.prop_type == &"crate_s" or placement.prop_type == &"crate_m" or placement.prop_type == &"crate_flat":
+		body.set_meta("destructible", true)
+		body.set_meta("health", 36.0 if placement.prop_type == &"crate_s" else 64.0)
 	var traversal := traversal_for(placement.prop_type)
 	if traversal >= 0:
 		body.set_meta("traversal_class", traversal)

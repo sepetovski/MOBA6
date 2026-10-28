@@ -10,6 +10,7 @@ var intent := MovementIntent.new()
 var spawn_transform := Transform3D.IDENTITY
 var combat: Combat
 var hero_name := ""
+var aim_point := Vector3.INF
 
 
 func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID) -> void:
@@ -65,7 +66,11 @@ func apply_command(cmd: Command) -> void:
 			combat.attack_target = cmd.target_id
 		Command.Kind.CAST:
 			if cmd.pressed:
+				_face_aim(cmd.point)
 				combat.cast(cmd.slot, cmd.point)
+		Command.Kind.AIM:
+			aim_point = cmd.point
+			_face_aim(cmd.point)
 		Command.Kind.JUMP:
 			if cmd.pressed:
 				intent.jump_pressed = true
@@ -81,6 +86,8 @@ func apply_command(cmd: Command) -> void:
 
 
 func sim_step(dt: float, sim: Simulation) -> void:
+	if aim_point != Vector3.INF:
+		_face_aim(aim_point)
 	if combat != null:
 		combat.begin(dt, sim)
 	motor.step(intent, dt)
@@ -96,6 +103,13 @@ func set_frozen(frozen: bool) -> void:
 	motor.can_move = not frozen
 	motor.can_jump = not frozen
 	motor.can_crouch = not frozen
+
+
+func _face_aim(point: Vector3) -> void:
+	var offset := point - global_position
+	offset.y = 0.0
+	if motor != null:
+		motor.set_aim(offset)
 
 
 func scripted_motion() -> bool:

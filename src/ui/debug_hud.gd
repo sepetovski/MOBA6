@@ -123,7 +123,10 @@ func _status() -> String:
 		state_name = "running"
 	elif _sim.get_match_state() == Match.State.SETUP:
 		state_name = "setup"
-	var body := "FPS %.0f\ntick %d\n%s  %.1f s" % [Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds()]
+	var camera_mode := "LOCKED" if _camera.is_locked() else "FREE"
+	var body := "FPS %.0f\ntick %d\n%s  %.1f s\nCamera %s  (Y, or middle-mouse drag)" % [
+		Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds(), camera_mode
+	]
 	if human != null:
 		body += "\n%s  %s\n%s  speed %.1f  grounded %s\n%s" % [
 			human.hero_name,

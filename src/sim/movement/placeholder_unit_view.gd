@@ -10,6 +10,7 @@ var _pivot: Node3D
 var _mesh: MeshInstance3D
 var _capsule: CapsuleMesh
 var _nose: MeshInstance3D
+var _arrow: MeshInstance3D
 var _shadow: MeshInstance3D
 var _marker: MeshInstance3D
 
@@ -37,6 +38,14 @@ func _build() -> void:
 	(_nose.mesh as BoxMesh).size = Vector3(0.16, 0.16, 0.28)
 	_nose.material_override = _mat(Color(0.45, 0.45, 0.45))
 	_pivot.add_child(_nose)
+	_arrow = MeshInstance3D.new()
+	_arrow.name = "Facing"
+	var arrow_mesh := BoxMesh.new()
+	arrow_mesh.size = Vector3(0.28, 0.05, 1.7)
+	_arrow.mesh = arrow_mesh
+	_arrow.material_override = _mat(Color(0.95, 0.95, 0.95))
+	_arrow.position = Vector3(0.0, 0.06, -1.15)
+	add_child(_arrow)
 	_shadow = _disc(0.42, Color(0.0, 0.0, 0.0, 0.45))
 	add_child(_shadow)
 	_marker = _ring()
@@ -57,7 +66,9 @@ func _process(_delta: float) -> void:
 	_capsule.radius = profile.radius
 	_capsule.height = maxf(height, profile.radius * 2.0)
 	_mesh.position = Vector3(0.0, _capsule.height * 0.5, 0.0)
-	_nose.position = Vector3(0.0, _capsule.height * 0.62, -(profile.radius + 0.12))
+	_nose.position = Vector3(0.0, _capsule.height * 0.62, -(profile.radius + 0.22))
+	if _arrow != null:
+		_arrow.position = Vector3(0.0, 0.06, -1.15)
 	_pivot.rotation.x = deg_to_rad(-profile.slide_tilt_deg) if _motor.state == MovementMotor.State.SLIDING else 0.0
 	_place_aids(profile)
 

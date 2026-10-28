@@ -19,6 +19,7 @@ var _bot_seeds: Dictionary = {}
 var _next_id := 1
 var _shots: Array[CombatProjectile] = []
 var _respawn_at: Dictionary = {}
+var _towers: Array[TeamTower] = []
 
 
 func _init() -> void:
@@ -32,6 +33,7 @@ func start_match(config: MatchConfig, arena: Node3D) -> void:
 	rng.seed = config.match_seed
 	_set_match_state(Match.State.SETUP)
 	_spawn_roster()
+	_spawn_towers()
 	_match.begin_countdown(config.countdown_seconds)
 	_set_frozen(true)
 	_set_match_state(Match.State.COUNTDOWN)
@@ -45,10 +47,11 @@ func submit_command(cmd: Command) -> void:
 	var unit := get_unit(cmd.unit_id)
 	if unit == null or not unit.state.alive:
 		return
-	if _match.state != Match.State.RUNNING and cmd.kind != Command.Kind.STOP:
+	if _match.state != Match.State.RUNNING and cmd.kind != Command.Kind.STOP and cmd.kind != Command.Kind.AIM:
 		return
 	_queue.append(cmd)
-	DebugService.log_command(cmd)
+	if cmd.kind != Command.Kind.AIM:
+		DebugService.log_command(cmd)
 
 
 func spawn_unit(hero: HeroDefinition, team: int, slot: int, controller: int) -> int:
@@ -155,6 +158,7 @@ func _physics_process(_delta: float) -> void:
 		if unit != null and unit.state.alive:
 			unit.sim_step(step, self)
 	_step_projectiles(step)
+	_step_towers(step)
 	_revive_ready()
 	_keep_inside()
 	_separate(step)
@@ -237,16 +241,20 @@ func deal_damage(source_id: int, target_id: int, amount: float) -> void:
 
 
 func launch_projectile(owner: SimUnit, aim_at: Vector3, direction: Vector3, speed: float, damage: float) -> void:
+	launch_projectile_from(owner.global_position + Vector3(0.0, 1.1, 0.0), owner.team, owner.unit_id, direction, speed, damage)
+
+
+func launch_projectile_from(origin: Vector3, team: int, owner_id: int, direction: Vector3, speed: float, damage: float) -> void:
 	var shot := CombatProjectile.new()
-	shot.position = owner.global_position + Vector3(0.0, 1.1, 0.0)
+	shot.position = origin
 	shot.origin = shot.position
 	var flat := Vector3(direction.x, 0.0, direction.z)
 	if flat.length_squared() < 0.01:
-		flat = Vector3(aim_at.x - shot.position.x, 0.0, aim_at.z - shot.position.z)
+		flat = Vector3(0, 0, -1)
 	shot.velocity = flat.normalized() * speed
 	shot.damage = damage
-	shot.team = owner.team
-	shot.owner_id = owner.unit_id
+	shot.team = team
+	shot.owner_id = owner_id
 	var mesh := SphereMesh.new()
 	mesh.radius = 0.22
 	mesh.height = 0.44
@@ -278,6 +286,8 @@ func _step_projectiles(dt: float) -> void:
 					deal_damage(shot.owner_id, unit.unit_id, shot.damage)
 					spent = true
 					break
+		if not spent and damage_props(shot.position, shot.radius + 0.4, shot.damage):
+			spent = true
 		if spent:
 			if shot.mesh != null:
 				shot.mesh.queue_free()
@@ -302,6 +312,53 @@ func _revive_ready() -> void:
 		unit.motor.reset_motion()
 		unit.set_frozen(_match.state != Match.State.RUNNING)
 		unit.combat.clear_attack()
+
+
+func damage_props(point: Vector3, radius: float, amount: float) -> bool:
+	var hit := false
+	var props := _arena.get_node_or_null("Navigation/Props")
+	if props != null:
+		for child in props.get_children():
+			if not child.has_meta("destructible"):
+				continue
+			var flat := (child as Node3D).global_position - point
+			flat.y = 0.0
+			if flat.length() > radius + 1.2:
+				continue
+			hit = true
+			var left := float(child.get_meta("health")) - amount
+			if left <= 0.0:
+				child.queue_free()
+			else:
+				child.set_meta("health", left)
+	for tower in _towers:
+		if tower.health <= 0.0:
+			continue
+		var flat := tower.global_position - point
+		flat.y = 0.0
+		if flat.length() > radius + 1.4:
+			continue
+		hit = true
+		tower.hurt(amount)
+	return hit
+
+
+func _spawn_towers() -> void:
+	var west := TeamTower.new()
+	west.build(Team.Id.A, Vector3(-30.0, 0.0, 0.0))
+	var east := TeamTower.new()
+	east.build(Team.Id.B, Vector3(30.0, 0.0, 0.0))
+	_arena.add_child(west)
+	_arena.add_child(east)
+	_towers.append(west)
+	_towers.append(east)
+
+
+func _step_towers(dt: float) -> void:
+	if _match.state != Match.State.RUNNING:
+		return
+	for tower in _towers:
+		tower.step(dt, self)
 
 
 func _keep_inside() -> void:

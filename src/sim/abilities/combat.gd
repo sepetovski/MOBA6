@@ -58,8 +58,9 @@ func cast(slot: int, point: Vector3) -> void:
 	GameEvents.ability_cast.emit(_unit.unit_id, slot)
 	match ability.kind:
 		AbilityDefinition.Kind.DASH:
-			_start_dash(ability)
+			_start_dash(ability, point)
 		AbilityDefinition.Kind.SLASH:
+			_face_cast(point)
 			_slash(ability.radius, ability.damage)
 		AbilityDefinition.Kind.WHIRL:
 			_whirl(ability.radius, ability.damage)
@@ -95,11 +96,15 @@ func begin(dt: float, sim: Simulation) -> void:
 		return
 	_attack_wait = _stats.attack_interval
 	if _stats.attack == UnitStats.Attack.RANGED:
-		var aim := offset.normalized() if distance > 0.05 else -_unit.global_basis.z
-		sim.launch_projectile(_unit, target.global_position + Vector3(0, 1.0, 0), aim, _stats.projectile_speed, _stats.attack_damage)
+		var aim := -_unit.global_basis.z
+		aim.y = 0.0
+		if aim.length_squared() < 0.01:
+			aim = offset
+		sim.launch_projectile(_unit, _unit.global_position + aim.normalized() * 8.0, aim, _stats.projectile_speed, _stats.attack_damage)
+		_flash(0.6, 0.08)
 		return
 	if distance <= _stats.attack_range + 0.3:
-		sim.deal_damage(_unit.unit_id, target.unit_id, _stats.attack_damage)
+		_slash(_stats.attack_range, _stats.attack_damage)
 		_flash(1.6, 0.12)
 
 
@@ -109,16 +114,27 @@ func finish() -> void:
 		_slash(_dash_radius, _dash_damage)
 
 
-func _start_dash(ability: AbilityDefinition) -> void:
-	var forward := -_unit.global_basis.z
+func _face_cast(point: Vector3) -> void:
+	var offset := point - _unit.global_position
+	offset.y = 0.0
+	if offset.length_squared() < 0.04:
+		return
+	_unit.look_at(_unit.global_position + offset, Vector3.UP)
+	_unit.motor.set_aim(offset)
+
+
+func _start_dash(ability: AbilityDefinition, point: Vector3) -> void:
+	var forward := point - _unit.global_position
 	forward.y = 0.0
+	if forward.length_squared() < 0.04:
+		forward = -_unit.global_basis.z
+		forward.y = 0.0
 	if forward.length_squared() < 0.01:
 		forward = Vector3(0, 0, -1)
 	forward = forward.normalized()
-	var distance := ability.dash_distance
-	if distance < 0.0:
-		forward = -forward
-		distance = -distance
+	var distance := absf(ability.dash_distance)
+	_unit.look_at(_unit.global_position + forward, Vector3.UP)
+	_unit.motor.set_aim(forward)
 	_unit.motor.start_forced_motion(forward * distance, ability.dash_seconds)
 	if ability.damage > 0.0:
 		_dash_slash = true
@@ -174,6 +190,7 @@ func _slash(radius: float, damage: float) -> void:
 		if offset.length() > radius or offset.normalized().dot(forward) < 0.2:
 			continue
 		sim.deal_damage(_unit.unit_id, other.unit_id, damage)
+	sim.damage_props(_unit.global_position + forward * radius * 0.5, radius, damage)
 	_flash(radius, 0.16)
 
 
@@ -195,6 +212,7 @@ func _hurt_near(sim: Simulation, spot: Vector3, radius: float, damage: float, ig
 		offset.y = 0.0
 		if offset.length() <= radius:
 			sim.deal_damage(_unit.unit_id, other.unit_id, damage)
+	sim.damage_props(spot, radius, damage)
 
 
 func _can_hit(other: SimUnit) -> bool:
