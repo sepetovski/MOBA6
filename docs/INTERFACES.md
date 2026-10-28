@@ -137,3 +137,9 @@ func configure(radius: float, thickness: float, color: Color, alpha := 1.0) -> v
 func attach_to(unit: Node3D) -> void
 func place_at(point: Vector3, normal := Vector3.UP) -> void
 ```
+
+## Match (M4)
+
+`Simulation` ticks at physics priority 0. Controllers use priority -10 and only call `submit_command`. `dt` is `1 / GameConfig.TICK_RATE`. Before `RUNNING`, every command except `STOP` is dropped.
+
+`SimUnit.sim_step` is called by `Simulation` only. `UnitView` wraps `PlaceholderUnitView`. `GateController` sinks `Gate_A_Door` and `Gate_B_Door` when the match reaches `RUNNING`. `DebugHud` reads state and events.

@@ -24,6 +24,12 @@ const ACTIONS := {
 	"debug_collision": KEY_F2,
 	"debug_nav": KEY_F3,
 	"debug_freecam": KEY_F4,
+	"debug_teleport": KEY_T,
+	"debug_bots": KEY_F7,
+	"debug_time_slower": KEY_BRACKETLEFT,
+	"debug_time_faster": KEY_BRACKETRIGHT,
+	"debug_respawn": KEY_F8,
+	"debug_damage": KEY_F9,
 }
 
 const LAYER_NAMES := ["World", "Props", "Units", "Projectiles", "Triggers", "Pick", "NavBlock", "Occluders"]

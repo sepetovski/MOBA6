@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/scenes/soak_bot_match.gd" id="1_soak"]
+
+[node name="SoakBotMatch" type="Node"]
+script = ExtResource("1_soak")

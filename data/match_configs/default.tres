@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MatchConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://data/match_config.gd" id="1_match"]
+
+[resource]
+script = ExtResource("1_match")
+countdown_seconds = 5.0
+gate_open_seconds = 1.0
+match_seed = 1
+human_team = 0
+human_slot = 0
+bot_difficulty = 3
