@@ -15,9 +15,6 @@ func build(team_id: int, at: Vector3) -> void:
 	team = team_id
 	name = "Tower%s" % ("A" if team_id == Team.Id.A else "B")
 	position = at
-	set_meta("destructible", true)
-	set_meta("health", health)
-	set_meta("team", team)
 	collision_layer = GameConfig.LAYER_PROPS
 	collision_mask = 0
 	var mesh := CylinderMesh.new()
