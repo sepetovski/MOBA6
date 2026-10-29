@@ -9,6 +9,11 @@ var _plates: Array[Control] = []
 var _units: Array[SimUnit] = []
 var _help: Label
 var _readout: Label
+var _kda: Label
+var _board: Control
+var _team_a: Label
+var _team_b: Label
+var _last_hit: Dictionary = {}
 var _collision_root: Node3D
 var _collision_on := false
 var _freecam: Camera3D
@@ -34,6 +39,13 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_readout.add_theme_font_size_override("font_size", 18)
 	add_child(_readout)
+	_kda = Label.new()
+	_kda.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_kda.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_kda.add_theme_font_size_override("font_size", 28)
+	_kda.add_theme_color_override("font_color", Color(0.95, 0.92, 0.78))
+	add_child(_kda)
+	_build_board()
 	for unit in sim.get_units():
 		_add_unit(unit)
 	GameEvents.damage_dealt.connect(_show_damage)
@@ -65,6 +77,14 @@ func _add_unit(unit: SimUnit) -> void:
 	bar.size = Vector2(48, 6)
 	bar.color = color
 	plate.add_child(bar)
+	var hit := Label.new()
+	hit.name = "Hit"
+	hit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hit.position = Vector2(0, 28)
+	hit.add_theme_font_size_override("font_size", 15)
+	hit.add_theme_color_override("font_color", Color(1.0, 0.86, 0.35))
+	hit.visible = false
+	plate.add_child(hit)
 	add_child(plate)
 	_plates.append(plate)
 	_units.append(unit)
@@ -77,6 +97,7 @@ func _process(delta: float) -> void:
 	_cheats()
 	_fly(delta)
 	_update_plates()
+	_update_score()
 	_readout.text = _status()
 
 
@@ -112,6 +133,7 @@ func _update_plates() -> void:
 			var bar := plate.get_node("Bar") as ColorRect
 			var fraction := clampf(unit.state.health / maxf(unit.state.max_health, 1.0), 0.0, 1.0)
 			bar.size.x = 48.0 * fraction
+			_update_hit(plate, unit)
 		else:
 			plate.visible = false
 
@@ -124,8 +146,9 @@ func _status() -> String:
 	elif _sim.get_match_state() == Match.State.SETUP:
 		state_name = "setup"
 	var camera_mode := "LOCKED" if _camera.is_locked() else "FREE"
-	var body := "FPS %.0f\ntick %d\n%s  %.1f s\nCamera %s  (Y, or middle-mouse drag)" % [
-		Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds(), camera_mode
+	var camera_hint := "Y lock" if _camera.is_locked() else "edge or middle-mouse pans, Y locks"
+	var body := "FPS %.0f\ntick %d\n%s  %.1f s\nCamera %s  (%s)\nTAB scoreboard" % [
+		Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds(), camera_mode, camera_hint
 	]
 	if human != null:
 		body += "\n%s  %s\n%s  speed %.1f  grounded %s\n%s" % [
@@ -162,24 +185,115 @@ func _help_text() -> String:
 	return "\n".join(lines)
 
 
-func _show_damage(_source_id: int, target_id: int, amount: float, _damage_type: int) -> void:
+func _show_damage(source_id: int, target_id: int, amount: float, _damage_type: int) -> void:
 	if _camera == null or _camera.camera == null:
 		return
 	var unit := _sim.get_unit(target_id)
 	if unit == null:
 		return
+	var human := _sim.get_human()
+	var mine := human != null and source_id == human.unit_id
+	if mine:
+		_last_hit[target_id] = amount
 	var label := Label.new()
-	label.text = str(int(round(amount)))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 20)
-	label.position = _camera.camera.unproject_position(unit.global_position + Vector3(0, 2.2, 0))
+	if mine:
+		var total := int(round(_sim.damage_from(source_id, target_id)))
+		label.text = "%d\n%d total" % [int(round(amount)), total]
+		label.add_theme_font_size_override("font_size", 22)
+		label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.35))
+	else:
+		label.text = str(int(round(amount)))
+		label.add_theme_font_size_override("font_size", 18)
+	label.position = _camera.camera.unproject_position(unit.global_position + Vector3(0, 2.4, 0))
 	add_child(label)
 	var timer := Timer.new()
 	timer.one_shot = true
-	timer.wait_time = 0.6
+	timer.wait_time = 1.1 if mine else 0.6
 	timer.timeout.connect(label.queue_free)
 	label.add_child(timer)
 	timer.start()
+
+
+func _update_hit(plate: Control, unit: SimUnit) -> void:
+	var hit := plate.get_node("Hit") as Label
+	var human := _sim.get_human()
+	if human == null or hit == null:
+		return
+	var total := _sim.damage_from(human.unit_id, unit.unit_id)
+	if total <= 0.0:
+		hit.visible = false
+		return
+	var last := float(_last_hit.get(unit.unit_id, 0.0))
+	hit.visible = true
+	hit.text = "%d hit   %d total" % [int(round(last)), int(round(total))]
+
+
+func _update_score() -> void:
+	var view := get_viewport().get_visible_rect().size
+	if _kda != null:
+		_kda.size = Vector2(280, 72)
+		_kda.position = Vector2(view.x - 296, 12)
+		var human := _sim.get_human()
+		if human == null:
+			_kda.text = "K / D / A"
+		else:
+			var state := human.state
+			_kda.text = "%d / %d / %d\n%d dmg" % [
+				state.kills, state.deaths, state.assists, int(round(state.damage_dealt))
+			]
+	if _board == null:
+		return
+	var show := Input.is_key_pressed(KEY_TAB)
+	_board.visible = show
+	if not show:
+		return
+	_board.size = view
+	_team_a.text = _team_lines(Team.Id.A)
+	_team_b.text = _team_lines(Team.Id.B)
+	_team_a.position = Vector2(view.x * 0.12, view.y * 0.16)
+	_team_b.position = Vector2(view.x * 0.54, view.y * 0.16)
+
+
+func _team_lines(team: int) -> String:
+	var title := "Team A" if team == Team.Id.A else "Team B"
+	var lines: PackedStringArray = ["%s" % title, "Name     K    D    A     Damage"]
+	for unit in _sim.get_units():
+		if unit.team != team:
+			continue
+		var state := unit.state
+		var name := state.display_name
+		if state.controller == UnitState.Controller.HUMAN:
+			name += " you"
+		lines.append("%-8s %3d  %3d  %3d   %6d" % [
+			name, state.kills, state.deaths, state.assists, int(round(state.damage_dealt))
+		])
+	return "\n".join(lines)
+
+
+func _build_board() -> void:
+	_board = Control.new()
+	_board.name = "Scoreboard"
+	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board.visible = false
+	var dim := ColorRect.new()
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.color = Color(0.02, 0.03, 0.05, 0.62)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_board.add_child(dim)
+	_team_a = _board_column(Color(0.65, 0.78, 1.0))
+	_team_b = _board_column(Color(1.0, 0.62, 0.58))
+	_board.add_child(_team_a)
+	_board.add_child(_team_b)
+	add_child(_board)
+
+
+func _board_column(color: Color) -> Label:
+	var label := Label.new()
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 
 func _cheats() -> void:

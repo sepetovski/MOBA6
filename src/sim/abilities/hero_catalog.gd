@@ -12,7 +12,7 @@ static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
 	hero.stats.attack = UnitStats.Attack.MELEE
 	hero.stats.attack_damage = 18.0
-	hero.stats.attack_range = 2.5
+	hero.stats.attack_range = 4.2
 	hero.stats.attack_interval = 0.8
 	hero.abilities = [
 		_slash(&"dash_strike", "Dash Strike", 24.0, 2.4, 6.5, 0.2, 6.0),
@@ -39,7 +39,7 @@ static func skirmisher() -> HeroDefinition:
 	var hero := _base(&"skirmisher", "Skirmisher")
 	hero.stats.attack = UnitStats.Attack.MELEE
 	hero.stats.attack_damage = 11.0
-	hero.stats.attack_range = 2.2
+	hero.stats.attack_range = 3.8
 	hero.stats.attack_interval = 0.55
 	hero.abilities = [
 		_slash(&"lunge", "Lunge", 14.0, 1.6, 7.0, 0.18, 5.0),

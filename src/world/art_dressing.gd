@@ -15,31 +15,32 @@ static func attach(arena: Node3D) -> void:
 	var root := Node3D.new()
 	root.name = "Dressing"
 	arena.add_child(root)
-	var spots := [
-		Vector3(0, 0, -34),
-		Vector3(24, 0, -24),
-		Vector3(24, 0, 24),
-		Vector3(0, 0, 34),
-		Vector3(-24, 0, 24),
-		Vector3(-24, 0, -24),
-	]
-	for index in spots.size():
-		var path := TREE if index % 2 == 0 else BIRCH
-		var height := TREE_HEIGHT if index % 2 == 0 else BIRCH_HEIGHT
-		var visual := _visual(path, height, true)
-		if visual == null:
+	var index := 0
+	for radius in [34.0, 22.0]:
+		var count := 10 if radius > 30.0 else 8
+		for step in count:
+			var angle := TAU * float(step) / float(count) + (0.2 if radius < 30.0 else 0.0)
+			var spot := Vector3(sin(angle) * radius, 0.0, cos(angle) * radius)
+			if absf(spot.x) > 26.0 and absf(spot.z) < 8.0:
+				continue
+			var birch := index % 2 == 1
+			var visual := _visual(BIRCH if birch else TREE, BIRCH_HEIGHT if birch else TREE_HEIGHT, true)
+			index += 1
+			if visual == null:
+				continue
+			visual.position = spot
+			visual.rotation.y = angle
+			root.add_child(visual)
+			_trunk(root, spot)
+	var fridge_spots := [Vector3(0, 0, -16), Vector3(16, 0, 14), Vector3(-16, 0, 12)]
+	for spot in fridge_spots:
+		var fridge := _visual(FRIDGE, FRIDGE_HEIGHT, false)
+		if fridge == null:
 			continue
-		visual.position = spots[index]
-		visual.rotation.y = float(index) * 0.7
-		root.add_child(visual)
-		_trunk(root, spots[index])
-	var fridge := _visual(FRIDGE, FRIDGE_HEIGHT, false)
-	if fridge != null:
-		fridge.position = Vector3(0, 0, -16)
-		fridge.rotation.y = 0.4
+		fridge.position = spot
+		fridge.rotation.y = spot.x * 0.05
 		fridge.set_meta("destructible", true)
 		fridge.set_meta("health", 50.0)
-		fridge.collision_layer = GameConfig.LAYER_PROPS
 		root.add_child(fridge)
 
 

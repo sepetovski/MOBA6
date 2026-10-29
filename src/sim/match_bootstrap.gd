@@ -25,7 +25,8 @@ func _ready() -> void:
 	camera.profile = load(CAMERA) as CameraProfile
 	add_child(camera)
 	var info := arena.get_node("ArenaInfo") as ArenaInfo
-	camera.set_bounds(info.get_bounds())
+	# The octagon AABB stops at the ring. Grow it so a free camera can cross the tunnels and stands.
+	camera.set_bounds(info.get_bounds().grow(28.0))
 	var human := simulation.get_human()
 	if human != null:
 		camera.follow(human)

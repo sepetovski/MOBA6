@@ -43,6 +43,17 @@ func _attach_character(path: String) -> bool:
 	return true
 
 
+func play_swing() -> void:
+	var model := get_node_or_null("ModelRoot") as Node3D
+	if model == null:
+		return
+	var rest := model.rotation.y
+	var tween := create_tween()
+	tween.tween_property(model, "rotation:y", rest + 1.15, 0.07)
+	tween.tween_property(model, "rotation:y", rest - 0.35, 0.06)
+	tween.tween_property(model, "rotation:y", rest, 0.1)
+
+
 func _process(_delta: float) -> void:
 	if _unit != null:
 		visible = _unit.state.alive

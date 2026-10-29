@@ -20,6 +20,8 @@ var _next_id := 1
 var _shots: Array[CombatProjectile] = []
 var _respawn_at: Dictionary = {}
 var _towers: Array[TeamTower] = []
+var _recent_hits: Dictionary = {}
+const ASSIST_SECONDS := 25.0
 
 
 func _init() -> void:
@@ -245,21 +247,66 @@ func deal_damage(source_id: int, target_id: int, amount: float) -> void:
 	if unit == null or not unit.state.alive or amount <= 0.0:
 		return
 	unit.state.health = maxf(unit.state.health - amount, 0.0)
+	_credit_damage(source_id, target_id, amount)
 	GameEvents.damage_dealt.emit(source_id, target_id, amount, 0)
 	if unit.state.health > 0.0:
 		return
 	unit.state.alive = false
 	unit.motor.can_move = false
 	unit.combat.clear_attack()
+	_score_kill(source_id, target_id)
 	GameEvents.unit_died.emit(target_id, source_id)
 	_respawn_at[target_id] = tick + 6 * GameConfig.TICK_RATE
 
 
-func launch_projectile(owner: SimUnit, aim_at: Vector3, direction: Vector3, speed: float, damage: float) -> void:
-	launch_projectile_from(owner.global_position + Vector3(0.0, 1.1, 0.0), owner.team, owner.unit_id, direction, speed, damage)
+func damage_from(source_id: int, target_id: int) -> float:
+	var source := get_unit(source_id)
+	if source == null:
+		return 0.0
+	return float(source.state.damage_to.get(target_id, 0.0))
 
 
-func launch_projectile_from(origin: Vector3, team: int, owner_id: int, direction: Vector3, speed: float, damage: float) -> void:
+func _credit_damage(source_id: int, target_id: int, amount: float) -> void:
+	if source_id < 0 or source_id == target_id:
+		return
+	var source := get_unit(source_id)
+	if source == null:
+		return
+	source.state.damage_dealt += amount
+	source.state.damage_to[target_id] = float(source.state.damage_to.get(target_id, 0.0)) + amount
+	if not _recent_hits.has(target_id):
+		_recent_hits[target_id] = {}
+	var hits: Dictionary = _recent_hits[target_id]
+	hits[source_id] = tick
+
+
+func _score_kill(killer_id: int, target_id: int) -> void:
+	var victim := get_unit(target_id)
+	if victim != null:
+		victim.state.deaths += 1
+	if killer_id >= 0 and killer_id != target_id:
+		var killer := get_unit(killer_id)
+		if killer != null:
+			killer.state.kills += 1
+	var window := int(ASSIST_SECONDS * float(GameConfig.TICK_RATE))
+	var hits: Dictionary = _recent_hits.get(target_id, {})
+	for source_id in hits.keys():
+		var id := int(source_id)
+		if id == killer_id or id == target_id:
+			continue
+		if tick - int(hits[source_id]) > window:
+			continue
+		var helper := get_unit(id)
+		if helper != null:
+			helper.state.assists += 1
+	_recent_hits.erase(target_id)
+
+
+func launch_projectile(owner: SimUnit, aim_at: Vector3, direction: Vector3, speed: float, damage: float, color := Color(0.95, 0.45, 0.2)) -> void:
+	launch_projectile_from(owner.global_position + Vector3(0.0, 1.1, 0.0), owner.team, owner.unit_id, direction, speed, damage, color)
+
+
+func launch_projectile_from(origin: Vector3, team: int, owner_id: int, direction: Vector3, speed: float, damage: float, color := Color(0.95, 0.55, 0.15)) -> void:
 	var shot := CombatProjectile.new()
 	shot.position = origin
 	shot.origin = shot.position
@@ -270,14 +317,15 @@ func launch_projectile_from(origin: Vector3, team: int, owner_id: int, direction
 	shot.damage = damage
 	shot.team = team
 	shot.owner_id = owner_id
+	shot.color = color
 	var mesh := SphereMesh.new()
-	mesh.radius = 0.22
-	mesh.height = 0.44
+	mesh.radius = 0.28
+	mesh.height = 0.56
 	var visual := MeshInstance3D.new()
 	visual.mesh = mesh
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(0.9, 0.9, 0.9)
+	material.albedo_color = color
 	visual.material_override = material
 	visual.position = shot.position
 	add_child(visual)

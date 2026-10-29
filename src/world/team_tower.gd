@@ -60,7 +60,8 @@ func step(dt: float, sim: Simulation) -> void:
 		return
 	_wait = attack_interval
 	var aim := target.global_position - global_position
-	sim.launch_projectile_from(global_position + Vector3(0, 3.2, 0), team, -1, aim, 16.0, attack_damage)
+	var tint := Color(0.35, 0.55, 1.0) if team == Team.Id.A else Color(1.0, 0.28, 0.22)
+	sim.launch_projectile_from(global_position + Vector3(0, 3.2, 0), team, -1, aim, 16.0, attack_damage, tint)
 
 
 func hurt(amount: float) -> void:

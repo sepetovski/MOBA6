@@ -72,12 +72,15 @@ func focus_on(world_point: Vector3, instant := false) -> void:
 func screen_to_ground(screen_pos: Vector2) -> Variant:
 	if camera == null:
 		return null
+	camera.force_update_transform()
 	var origin := camera.project_ray_origin(screen_pos)
 	var direction := camera.project_ray_normal(screen_pos)
 	return _plane_y0(origin, direction)
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and (event as InputEventKey).echo:
+		return
 	if event.is_action_pressed(&"camera_lock"):
 		set_locked(not _locked)
 		_mark_handled()
@@ -103,6 +106,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			shift.y = 0.0
 			_goal += shift
 			_focus += shift
+		else:
+			var fallback := Vector3(-motion.relative.x, 0.0, -motion.relative.y) * 0.03
+			_goal += fallback
+			_focus += fallback
 		_mark_handled()
 
 
@@ -110,7 +117,8 @@ func _process(delta: float) -> void:
 	var tuned := _profile()
 	_distance = _approach(_distance, _distance_target, tuned.zoom_smooth, delta)
 	_apply_rig()
-	if _locked and _edge_velocity() != Vector3.ZERO:
+	var edge := _edge_velocity()
+	if _locked and edge != Vector3.ZERO:
 		set_locked(false)
 	if not _locked:
 		var velocity := _pan_velocity()
@@ -176,24 +184,25 @@ func _pan_velocity() -> Vector3:
 func _edge_velocity() -> Vector3:
 	if DisplayServer.get_name() == "headless":
 		return Vector3.ZERO
-	if not DisplayServer.window_is_focused():
+	if _drag:
 		return Vector3.ZERO
 	var viewport := get_viewport()
 	if viewport == null:
 		return Vector3.ZERO
 	var mouse := viewport.get_mouse_position()
 	var size := viewport.get_visible_rect().size
-	if mouse.x < 0.0 or mouse.y < 0.0 or mouse.x > size.x or mouse.y > size.y:
+	if size.x < 2.0 or size.y < 2.0:
 		return Vector3.ZERO
-	var margin := float(_profile().edge_pan_margin_px)
+	var margin_x := maxf(float(_profile().edge_pan_margin_px), size.x * 0.08)
+	var margin_y := maxf(float(_profile().edge_pan_margin_px), size.y * 0.08)
 	var direction := Vector3.ZERO
-	if mouse.x <= margin:
+	if mouse.x <= margin_x:
 		direction.x -= 1.0
-	elif mouse.x >= size.x - margin:
+	elif mouse.x >= size.x - margin_x:
 		direction.x += 1.0
-	if mouse.y <= margin:
+	if mouse.y <= margin_y:
 		direction.z -= 1.0
-	elif mouse.y >= size.y - margin:
+	elif mouse.y >= size.y - margin_y:
 		direction.z += 1.0
 	if direction == Vector3.ZERO:
 		return Vector3.ZERO

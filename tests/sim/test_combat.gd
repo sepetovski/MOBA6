@@ -44,6 +44,21 @@ func test_melee_dash_and_bomb() -> void:
 	for _i in 50:
 		await get_tree().physics_frame
 	assert_lt(bomb_target.state.health, bomb_health, "the bomb should land on the enemy")
+	var victim := enemy
+	victim.state.alive = true
+	victim.state.health = 400.0
+	victim.state.deaths = 0
+	victim.motor.can_move = true
+	hero.state.kills = 0
+	var helper := ally
+	helper.state.assists = 0
+	simulation.deal_damage(helper.unit_id, victim.unit_id, 20.0)
+	simulation.deal_damage(hero.unit_id, victim.unit_id, 400.0)
+	assert_eq(hero.state.kills, 1, "the last hit is the kill")
+	assert_eq(victim.state.deaths, 1, "the victim records a death")
+	assert_eq(helper.state.assists, 1, "damage inside the assist window counts")
+	assert_almost_eq(simulation.damage_from(hero.unit_id, victim.unit_id), hero.state.damage_to[victim.unit_id], 0.01)
+	assert_gte(hero.state.damage_dealt, 400.0)
 
 
 func _enemy(simulation: Simulation, team: int) -> SimUnit:

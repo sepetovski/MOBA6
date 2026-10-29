@@ -84,14 +84,13 @@ func begin(dt: float, sim: Simulation) -> void:
 	var offset := target.global_position - _unit.global_position
 	offset.y = 0.0
 	var distance := offset.length()
-	if distance > _stats.attack_range:
+	var reach := _stats.attack_range + 1.1
+	if distance > reach:
 		_unit.intent.has_move_target = true
 		_unit.intent.move_target = target.global_position
 		_unit.intent.steering = false
 		return
 	_unit.intent.stop = true
-	if offset.length_squared() > 0.01:
-		_unit.look_at(_unit.global_position + offset, Vector3.UP)
 	if _attack_wait > 0.0:
 		return
 	_attack_wait = _stats.attack_interval
@@ -100,12 +99,11 @@ func begin(dt: float, sim: Simulation) -> void:
 		aim.y = 0.0
 		if aim.length_squared() < 0.01:
 			aim = offset
-		sim.launch_projectile(_unit, _unit.global_position + aim.normalized() * 8.0, aim, _stats.projectile_speed, _stats.attack_damage)
+		sim.launch_projectile(_unit, _unit.global_position + aim.normalized() * 8.0, aim, _stats.projectile_speed, _stats.attack_damage, _shot_color())
 		_flash(0.6, 0.08)
 		return
-	if distance <= _stats.attack_range + 0.3:
-		_slash(_stats.attack_range, _stats.attack_damage)
-		_flash(1.6, 0.12)
+	_slash(reach, _stats.attack_damage)
+	_flash(1.6, 0.12)
 
 
 func finish() -> void:
@@ -172,6 +170,7 @@ func _tick_bombs(dt: float, sim: Simulation) -> void:
 
 
 func _slash(radius: float, damage: float) -> void:
+	_swing()
 	if damage <= 0.0:
 		return
 	var forward := -_unit.global_basis.z
@@ -187,7 +186,7 @@ func _slash(radius: float, damage: float) -> void:
 			continue
 		var offset := other.global_position - _unit.global_position
 		offset.y = 0.0
-		if offset.length() > radius or offset.normalized().dot(forward) < 0.2:
+		if offset.length() > radius or offset.normalized().dot(forward) < -0.15:
 			continue
 		sim.deal_damage(_unit.unit_id, other.unit_id, damage)
 	sim.damage_props(_unit.global_position + forward * radius * 0.5, radius, damage)
@@ -222,6 +221,25 @@ func _can_hit(other: SimUnit) -> bool:
 func _simulation() -> Simulation:
 	var node := _unit.get_parent()
 	return node as Simulation
+
+
+func _shot_color() -> Color:
+	var palette: Array[Color] = [
+		Color(0.95, 0.28, 0.22),
+		Color(0.25, 0.72, 0.98),
+		Color(0.98, 0.78, 0.18),
+		Color(0.45, 0.92, 0.38),
+		Color(0.72, 0.38, 0.98),
+		Color(0.98, 0.45, 0.72),
+		Color(0.95, 0.55, 0.15),
+	]
+	return palette[_unit.unit_id % palette.size()]
+
+
+func _swing() -> void:
+	var view := _unit.get_node_or_null("UnitView")
+	if view != null and view.has_method("play_swing"):
+		view.play_swing()
 
 
 func _flash(length: float, life: float) -> void:
