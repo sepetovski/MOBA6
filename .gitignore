@@ -1,4 +1,6 @@
 .godot/
+art/exports/**/*.webp
+art/exports/**/*.webp.import
 .mono/
 *.translation
 /builds/

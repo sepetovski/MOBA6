@@ -59,6 +59,7 @@ func spawn_unit(hero: HeroDefinition, team: int, slot: int, controller: int) -> 
 	_next_id += 1
 	var unit := SimUnit.new()
 	unit.name = "Unit%d" % id
+	unit.set_meta("character_model", _random_character())
 	add_child(unit)
 	var nav_map := _arena.get_world_3d().navigation_map
 	unit.setup(id, hero, team, slot, nav_map)
@@ -212,6 +213,20 @@ func _set_match_state(next: int) -> void:
 	GameEvents.match_state_changed.emit(next)
 
 
+func _random_character() -> String:
+	var directory := DirAccess.open("res://art/exports/characters")
+	if directory == null:
+		return ""
+	var paths: PackedStringArray = []
+	for file_name in directory.get_files():
+		if file_name.ends_with(".glb"):
+			paths.append("res://art/exports/characters/%s" % file_name)
+	if paths.is_empty():
+		return ""
+	paths.sort()
+	return paths[rng.randi() % paths.size()]
+
+
 func _spawn_roster() -> void:
 	for slot in 6:
 		var controller := UnitState.Controller.BOT
@@ -316,21 +331,7 @@ func _revive_ready() -> void:
 
 func damage_props(point: Vector3, radius: float, amount: float, hit_towers := true) -> bool:
 	var hit := false
-	var props := _arena.get_node_or_null("Navigation/Props")
-	if props != null:
-		for child in props.get_children():
-			if not child.has_meta("destructible"):
-				continue
-			var flat := (child as Node3D).global_position - point
-			flat.y = 0.0
-			if flat.length() > radius + 1.2:
-				continue
-			hit = true
-			var left := float(child.get_meta("health")) - amount
-			if left <= 0.0:
-				child.queue_free()
-			else:
-				child.set_meta("health", left)
+	hit = _hurt_destructibles(_arena, point, radius + 1.2, amount) or hit
 	if hit_towers:
 		for tower in _towers:
 			if tower.health <= 0.0:
@@ -341,6 +342,24 @@ func damage_props(point: Vector3, radius: float, amount: float, hit_towers := tr
 				continue
 			hit = true
 			tower.hurt(amount)
+	return hit
+
+
+func _hurt_destructibles(node: Node, point: Vector3, reach: float, amount: float) -> bool:
+	var hit := false
+	if node != _arena and node.has_meta("destructible") and node is Node3D:
+		var flat := (node as Node3D).global_position - point
+		flat.y = 0.0
+		if flat.length() <= reach:
+			hit = true
+			var left := float(node.get_meta("health")) - amount
+			if left <= 0.0:
+				node.queue_free()
+			else:
+				node.set_meta("health", left)
+	for child in node.get_children():
+		if is_instance_valid(child):
+			hit = _hurt_destructibles(child, point, reach, amount) or hit
 	return hit
 
 

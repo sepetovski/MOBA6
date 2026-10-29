@@ -12,6 +12,35 @@ func bind(unit: SimUnit) -> void:
 	_placeholder.name = "Placeholder"
 	add_child(_placeholder)
 	_placeholder.bind(unit)
+	var model_path := str(unit.get_meta("character_model", ""))
+	if model_path.is_empty():
+		return
+	if _attach_character(model_path):
+		var capsule := _placeholder.get_node_or_null("Visual")
+		if capsule != null:
+			capsule.visible = false
+
+
+func _attach_character(path: String) -> bool:
+	if not ResourceLoader.exists(path):
+		return false
+	var packed := load(path) as PackedScene
+	if packed == null:
+		return false
+	var model := packed.instantiate() as Node3D
+	if model == null:
+		return false
+	var box := ArtDressing._bounds(model)
+	var scale := 1.8 / maxf(box.size.y, 0.001)
+	var root := Node3D.new()
+	root.name = "ModelRoot"
+	# glTF faces +Z. Gameplay faces −Z, so turn the visual around once.
+	root.rotation.y = PI
+	model.scale = Vector3.ONE * scale
+	model.position = Vector3(0.0, -box.position.y * scale, 0.0)
+	root.add_child(model)
+	add_child(root)
+	return true
 
 
 func _process(_delta: float) -> void:

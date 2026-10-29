@@ -12,6 +12,7 @@ func _ready() -> void:
 	var layout := load(LAYOUT) as ArenaLayout
 	var arena := ArenaBuilder.build(layout)
 	add_child(arena)
+	ArtDressing.attach(arena)
 	await arena.navigation_ready
 	var config := load(MATCH) as MatchConfig
 	var bots := load(BOTS) as BotConfig
