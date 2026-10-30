@@ -3,7 +3,7 @@ class_name Match extends RefCounted
 ## SETUP spawns the twelve units. COUNTDOWN freezes them. RUNNING opens play.
 ## Time is ticks, not the wall clock.
 
-enum State { SETUP, COUNTDOWN, RUNNING }
+enum State { SETUP, COUNTDOWN, RUNNING, FINISHED }
 
 var state := State.SETUP
 var ticks_left := 0

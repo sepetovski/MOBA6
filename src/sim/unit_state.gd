@@ -20,3 +20,4 @@ var deaths := 0
 var assists := 0
 var damage_dealt := 0.0
 var damage_to: Dictionary = {}
+var gold := 0

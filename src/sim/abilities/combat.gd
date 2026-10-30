@@ -34,6 +34,28 @@ func opens_with_dash() -> bool:
 	return _abilities[0].kind == AbilityDefinition.Kind.DASH
 
 
+func ability_count() -> int:
+	return _abilities.size()
+
+
+func ability_name(slot: int) -> String:
+	if slot < 0 or slot >= _abilities.size():
+		return ""
+	return _abilities[slot].display_name
+
+
+func ability_cooldown(slot: int) -> float:
+	if slot < 0 or slot >= cooldowns.size():
+		return 0.0
+	return cooldowns[slot]
+
+
+func ability_cooldown_max(slot: int) -> float:
+	if slot < 0 or slot >= _abilities.size():
+		return 1.0
+	return maxf(_abilities[slot].cooldown, 0.01)
+
+
 func ability_line() -> String:
 	var parts: PackedStringArray = []
 	var keys := ["Q", "W"]

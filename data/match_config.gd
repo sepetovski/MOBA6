@@ -1,6 +1,7 @@
 class_name MatchConfig extends Resource
 
 @export var countdown_seconds := 5.0 # s
+@export var match_seconds := 300.0 # s, first team to more gold when this ends wins
 @export var gate_open_seconds := 1.0 # s
 @export var match_seed := 1
 @export var human_team := 0 # Team.Id

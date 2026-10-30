@@ -5,6 +5,7 @@ extends Node
 signal unit_spawned(unit_id: int)
 signal unit_died(unit_id: int, killer_id: int)
 signal damage_dealt(source_id: int, target_id: int, amount: float, damage_type: int)
+signal gold_awarded(unit_id: int, amount: int)
 signal ability_cast(unit_id: int, slot: int)
 signal status_applied(unit_id: int, status_id: StringName)
 signal match_state_changed(state: int)

@@ -20,8 +20,13 @@ var _next_id := 1
 var _shots: Array[CombatProjectile] = []
 var _respawn_at: Dictionary = {}
 var _towers: Array[TeamTower] = []
+var _groves: Array[HealingGrove] = []
 var _recent_hits: Dictionary = {}
+var _played := 0
 const ASSIST_SECONDS := 25.0
+const BOUNTY_BASE := 100
+const BOUNTY_PER_KILL := 50
+const ASSIST_SHARE := 0.25
 
 
 func _init() -> void:
@@ -36,6 +41,7 @@ func start_match(config: MatchConfig, arena: Node3D) -> void:
 	_set_match_state(Match.State.SETUP)
 	_spawn_roster()
 	_spawn_towers()
+	_spawn_groves()
 	_match.begin_countdown(config.countdown_seconds)
 	_set_frozen(true)
 	_set_match_state(Match.State.COUNTDOWN)
@@ -95,6 +101,51 @@ func get_match_state() -> int:
 
 func get_countdown_seconds() -> float:
 	return _match.seconds_left()
+
+
+func get_clock_seconds() -> float:
+	if _match.state == Match.State.COUNTDOWN:
+		return _match.seconds_left()
+	if _match.state == Match.State.FINISHED:
+		return 0.0
+	var played := float(_played) / float(GameConfig.TICK_RATE)
+	return maxf(_config.match_seconds - played, 0.0)
+
+
+func team_gold(team: int) -> int:
+	var total := 0
+	for unit in get_units():
+		if unit.team == team:
+			total += unit.state.gold
+	return total
+
+
+func winning_team() -> int:
+	var west := team_gold(Team.Id.A)
+	var east := team_gold(Team.Id.B)
+	if west == east:
+		return -1
+	return Team.Id.A if west > east else Team.Id.B
+
+
+func mvp_score(unit: SimUnit) -> int:
+	if unit == null:
+		return 0
+	var state := unit.state
+	return state.kills * 100 + state.assists * 40 + int(round(state.damage_dealt * 0.15)) - state.deaths * 60
+
+
+func mvp_unit() -> SimUnit:
+	var best: SimUnit = null
+	var best_score := -999999
+	for unit in get_units():
+		var score := mvp_score(unit)
+		if best == null or score > best_score:
+			best = unit
+			best_score = score
+		elif score == best_score and unit.state.gold > best.state.gold:
+			best = unit
+	return best
 
 
 func get_human() -> SimUnit:
@@ -160,11 +211,22 @@ func _physics_process(_delta: float) -> void:
 		var unit := _units[id] as SimUnit
 		if unit != null and unit.state.alive:
 			unit.sim_step(step, self)
-	_step_projectiles(step)
-	_step_towers(step)
-	_revive_ready()
+	var live := _match.state != Match.State.FINISHED
+	if live:
+		_step_projectiles(step)
+		_step_towers(step)
+		_step_groves(step)
+		_revive_ready()
 	_keep_inside()
-	_separate(step)
+	if live:
+		_separate(step)
+	if _match.state == Match.State.RUNNING:
+		_played += 1
+		var limit := int(round(_config.match_seconds * float(GameConfig.TICK_RATE)))
+		if limit < 1:
+			limit = 1
+		if _played >= limit:
+			_finish_match()
 	if record_tick_cost:
 		_tick_times.append(Time.get_ticks_usec() - started)
 	ticked.emit(tick)
@@ -284,10 +346,12 @@ func _score_kill(killer_id: int, target_id: int) -> void:
 	var victim := get_unit(target_id)
 	if victim != null:
 		victim.state.deaths += 1
+	var killer: SimUnit = null
 	if killer_id >= 0 and killer_id != target_id:
-		var killer := get_unit(killer_id)
+		killer = get_unit(killer_id)
 		if killer != null:
 			killer.state.kills += 1
+	var assisters: Array[SimUnit] = []
 	var window := int(ASSIST_SECONDS * float(GameConfig.TICK_RATE))
 	var hits: Dictionary = _recent_hits.get(target_id, {})
 	for source_id in hits.keys():
@@ -299,7 +363,65 @@ func _score_kill(killer_id: int, target_id: int) -> void:
 		var helper := get_unit(id)
 		if helper != null:
 			helper.state.assists += 1
+			assisters.append(helper)
 	_recent_hits.erase(target_id)
+	if victim != null:
+		_pay_bounty(killer, assisters, victim)
+
+
+func _pay_bounty(killer: SimUnit, assisters: Array[SimUnit], victim: SimUnit) -> void:
+	var bounty := BOUNTY_BASE + victim.state.kills * BOUNTY_PER_KILL
+	if killer != null:
+		_give_gold(killer, bounty)
+	if assisters.is_empty():
+		return
+	var pool := int(round(float(bounty) * ASSIST_SHARE))
+	var share := int(pool / assisters.size())
+	var extra := pool % assisters.size()
+	for index in assisters.size():
+		var amount := share
+		if index < extra:
+			amount += 1
+		_give_gold(assisters[index], amount)
+
+
+func _give_gold(unit: SimUnit, amount: int) -> void:
+	if unit == null or amount <= 0:
+		return
+	unit.state.gold += amount
+	GameEvents.gold_awarded.emit(unit.unit_id, amount)
+
+
+func _finish_match() -> void:
+	if _match.state == Match.State.FINISHED:
+		return
+	_set_frozen(true)
+	_set_match_state(Match.State.FINISHED)
+
+
+func _spawn_groves() -> void:
+	_groves.append(_grove(Vector3(-45.0, 0.0, 0.0), 7.0, Team.Id.A, 22.0))
+	_groves.append(_grove(Vector3(45.0, 0.0, 0.0), 7.0, Team.Id.B, 22.0))
+	_groves.append(_grove(Vector3.ZERO, 8.0, -1, 12.0))
+
+
+func _grove(at: Vector3, zone_radius: float, team_id: int, rate: float) -> HealingGrove:
+	var grove := HealingGrove.new()
+	grove.configure(at, zone_radius, team_id, rate)
+	_arena.add_child(grove)
+	return grove
+
+
+func _step_groves(dt: float) -> void:
+	if _match.state != Match.State.RUNNING:
+		return
+	for grove in _groves:
+		for unit in get_units():
+			if not unit.state.alive or not grove.covers(unit.global_position):
+				continue
+			if grove.team >= 0 and unit.team != grove.team:
+				continue
+			unit.state.health = minf(unit.state.health + grove.heal_per_second * dt, unit.state.max_health)
 
 
 func launch_projectile(owner: SimUnit, aim_at: Vector3, direction: Vector3, speed: float, damage: float, color := Color(0.95, 0.45, 0.2)) -> void:

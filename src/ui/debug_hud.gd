@@ -9,10 +9,29 @@ var _plates: Array[Control] = []
 var _units: Array[SimUnit] = []
 var _help: Label
 var _readout: Label
-var _kda: Label
+var _score_panel: PanelContainer
+var _kda_numbers: Label
+var _kda_detail: Label
+var _clock_panel: PanelContainer
+var _clock_label: Label
+var _gold_a: Label
+var _gold_b: Label
 var _board: Control
-var _team_a: Label
-var _team_b: Label
+var _rows_a: Array[HBoxContainer] = []
+var _rows_b: Array[HBoxContainer] = []
+var _team_a_gold: Label
+var _team_b_gold: Label
+var _player_bar: PanelContainer
+var _hero_label: Label
+var _hp_fill: ColorRect
+var _hp_text: Label
+var _pocket_gold: Label
+var _ability_names: Array[Label] = []
+var _ability_times: Array[Label] = []
+var _ability_covers: Array[ColorRect] = []
+var _result: PanelContainer
+var _result_title: Label
+var _result_body: Label
 var _last_hit: Dictionary = {}
 var _collision_root: Node3D
 var _collision_on := false
@@ -39,16 +58,15 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_readout.add_theme_font_size_override("font_size", 18)
 	add_child(_readout)
-	_kda = Label.new()
-	_kda.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_kda.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_kda.add_theme_font_size_override("font_size", 28)
-	_kda.add_theme_color_override("font_color", Color(0.95, 0.92, 0.78))
-	add_child(_kda)
+	_build_score_chip()
+	_build_clock()
 	_build_board()
+	_build_player_bar()
+	_build_result()
 	for unit in sim.get_units():
 		_add_unit(unit)
 	GameEvents.damage_dealt.connect(_show_damage)
+	GameEvents.gold_awarded.connect(_show_gold)
 	_collision_root = Node3D.new()
 	_collision_root.name = "CollisionDebug"
 	sim.get_parent().add_child(_collision_root)
@@ -120,10 +138,11 @@ var _nav_debug := false
 
 func _update_plates() -> void:
 	var cam := _camera.camera
+	var hide := Input.is_key_pressed(KEY_TAB) or _sim.get_match_state() == Match.State.FINISHED
 	for index in _units.size():
 		var unit := _units[index]
 		var plate := _plates[index]
-		if not unit.state.alive:
+		if hide or not unit.state.alive:
 			plate.visible = false
 			continue
 		var head := unit.global_position + Vector3(0, unit.motor.profile.height_stand + 0.3, 0)
@@ -231,44 +250,244 @@ func _update_hit(plate: Control, unit: SimUnit) -> void:
 
 func _update_score() -> void:
 	var view := get_viewport().get_visible_rect().size
-	if _kda != null:
-		_kda.size = Vector2(280, 72)
-		_kda.position = Vector2(view.x - 296, 12)
-		var human := _sim.get_human()
+	var human := _sim.get_human()
+	if _score_panel != null:
+		_score_panel.position = Vector2(view.x - 292, 14)
 		if human == null:
-			_kda.text = "K / D / A"
+			_kda_numbers.text = "0 / 0 / 0"
+			_kda_detail.text = "0 gold    0 dmg"
 		else:
 			var state := human.state
-			_kda.text = "%d / %d / %d\n%d dmg" % [
-				state.kills, state.deaths, state.assists, int(round(state.damage_dealt))
-			]
-	if _board == null:
-		return
-	var show := Input.is_key_pressed(KEY_TAB)
-	_board.visible = show
-	if not show:
-		return
-	_board.size = view
-	_team_a.text = _team_lines(Team.Id.A)
-	_team_b.text = _team_lines(Team.Id.B)
-	_team_a.position = Vector2(view.x * 0.12, view.y * 0.16)
-	_team_b.position = Vector2(view.x * 0.54, view.y * 0.16)
+			_kda_numbers.text = "%d / %d / %d" % [state.kills, state.deaths, state.assists]
+			_kda_detail.text = "%d gold    %d dmg" % [state.gold, int(round(state.damage_dealt))]
+	if _clock_panel != null:
+		_clock_panel.position = Vector2(view.x * 0.5 - 210, 14)
+		var left := _sim.get_clock_seconds()
+		var total := maxi(int(ceil(left)), 0)
+		var caption := "start" if _sim.get_match_state() == Match.State.COUNTDOWN else "left"
+		if _sim.get_match_state() == Match.State.FINISHED:
+			caption = "final"
+		_clock_label.text = "%d:%02d  %s" % [int(total / 60.0), total % 60, caption]
+		_gold_a.text = "A  %d" % _sim.team_gold(Team.Id.A)
+		_gold_b.text = "%d  B" % _sim.team_gold(Team.Id.B)
+	_place_player_bar(view, human)
+	_fill_rows(_rows_a, Team.Id.A)
+	_fill_rows(_rows_b, Team.Id.B)
+	if _team_a_gold != null:
+		_team_a_gold.text = "%d gold" % _sim.team_gold(Team.Id.A)
+		_team_b_gold.text = "%d gold" % _sim.team_gold(Team.Id.B)
+	if _board != null:
+		_board.visible = Input.is_key_pressed(KEY_TAB)
+		_board.size = view
+		var card := _board.get_node_or_null("Card") as Control
+		if card != null:
+			card.position = Vector2(view.x * 0.5 - 470, view.y * 0.5 - 250)
+	_update_result(view)
 
 
-func _team_lines(team: int) -> String:
-	var title := "Team A" if team == Team.Id.A else "Team B"
-	var lines: PackedStringArray = ["%s" % title, "Name     K    D    A     Damage"]
+func _place_player_bar(view: Vector2, human: SimUnit) -> void:
+	if _player_bar == null:
+		return
+	_player_bar.position = Vector2(view.x * 0.5 - 380, view.y - 168)
+	if human == null:
+		return
+	_hero_label.text = "%s   %s" % [human.state.display_name, human.hero_name]
+	var fraction := clampf(human.state.health / maxf(human.state.max_health, 1.0), 0.0, 1.0)
+	_hp_fill.size.x = 248.0 * fraction
+	_hp_fill.color = Color(lerpf(0.86, 0.18, fraction), lerpf(0.22, 0.78, fraction), 0.22)
+	_hp_text.text = "%d / %d" % [int(round(human.state.health)), int(round(human.state.max_health))]
+	_pocket_gold.text = "%d gold" % human.state.gold
+	if human.combat == null:
+		return
+	for slot in _ability_covers.size():
+		var ready := slot >= human.combat.ability_count()
+		var cd := 0.0 if ready else human.combat.ability_cooldown(slot)
+		var limit := 1.0 if ready else human.combat.ability_cooldown_max(slot)
+		var cooled := clampf(cd / limit, 0.0, 1.0)
+		_ability_covers[slot].size.y = 68.0 * cooled
+		_ability_times[slot].text = "ready" if cd <= 0.05 else "%.1f" % cd
+		if slot < human.combat.ability_count():
+			_ability_names[slot].text = human.combat.ability_name(slot)
+
+
+func _fill_rows(rows: Array[HBoxContainer], team: int) -> void:
+	var listed: Array[SimUnit] = []
 	for unit in _sim.get_units():
-		if unit.team != team:
+		if unit.team == team:
+			listed.append(unit)
+	for index in rows.size():
+		var row := rows[index]
+		if index >= listed.size():
+			row.visible = false
 			continue
+		row.visible = true
+		var unit := listed[index]
 		var state := unit.state
 		var name := state.display_name
 		if state.controller == UnitState.Controller.HUMAN:
-			name += " you"
-		lines.append("%-8s %3d  %3d  %3d   %6d" % [
-			name, state.kills, state.deaths, state.assists, int(round(state.damage_dealt))
-		])
-	return "\n".join(lines)
+			name += "  you"
+		var cells := [name, str(state.kills), str(state.deaths), str(state.assists), str(int(round(state.damage_dealt))), str(state.gold)]
+		for cell in row.get_child_count():
+			(row.get_child(cell) as Label).text = cells[cell]
+
+
+func _update_result(view: Vector2) -> void:
+	if _result == null:
+		return
+	var finished := _sim.get_match_state() == Match.State.FINISHED
+	_result.visible = finished
+	if not finished:
+		return
+	_result.position = Vector2(view.x * 0.5 - 280, view.y * 0.5 - 160)
+	var winner := _sim.winning_team()
+	if winner < 0:
+		_result_title.text = "DRAW"
+	else:
+		_result_title.text = "TEAM %s WINS" % ("A" if winner == Team.Id.A else "B")
+	var mvp := _sim.mvp_unit()
+	var who := "nobody"
+	var line := ""
+	if mvp != null:
+		who = "%s %s" % [mvp.state.display_name, mvp.hero_name]
+		line = "%d kills  ·  %d assists  ·  %d damage  ·  %d deaths\nMVP score %d" % [
+			mvp.state.kills, mvp.state.assists, int(round(mvp.state.damage_dealt)), mvp.state.deaths, _sim.mvp_score(mvp)
+		]
+	_result_body.text = "Gold   A %d    B %d\n\nMVP  %s\n%s\n\nKills count most, then damage, then assists. Deaths come off." % [
+		_sim.team_gold(Team.Id.A), _sim.team_gold(Team.Id.B), who, line
+	]
+
+
+func _show_gold(unit_id: int, amount: int) -> void:
+	var human := _sim.get_human()
+	if human == null or unit_id != human.unit_id or _camera == null or _camera.camera == null:
+		return
+	var label := Label.new()
+	label.text = "+%d" % amount
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.28))
+	label.position = _camera.camera.unproject_position(human.global_position + Vector3(0.6, 2.6, 0))
+	add_child(label)
+	var timer := Timer.new()
+	timer.one_shot = true
+	timer.wait_time = 1.0
+	timer.timeout.connect(label.queue_free)
+	label.add_child(timer)
+	timer.start()
+
+
+func _build_score_chip() -> void:
+	_score_panel = _framed(Vector2(268, 92), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
+	var caption := _text("K  /  D  /  A", 16, Color(0.78, 0.74, 0.6))
+	caption.position = Vector2(16, 8)
+	caption.size = Vector2(236, 22)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_score_panel.get_child(0).add_child(caption)
+	_kda_numbers = _text("0 / 0 / 0", 32, Color(0.98, 0.95, 0.84))
+	_kda_numbers.position = Vector2(12, 28)
+	_kda_numbers.size = Vector2(240, 36)
+	_kda_numbers.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_score_panel.get_child(0).add_child(_kda_numbers)
+	_kda_detail = _text("0 gold    0 dmg", 15, Color(1.0, 0.86, 0.35))
+	_kda_detail.position = Vector2(12, 64)
+	_kda_detail.size = Vector2(240, 20)
+	_kda_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_score_panel.get_child(0).add_child(_kda_detail)
+	add_child(_score_panel)
+
+
+func _build_clock() -> void:
+	_clock_panel = _framed(Vector2(420, 58), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
+	_gold_a = _text("A  0", 22, Color(0.62, 0.78, 1.0))
+	_gold_a.position = Vector2(16, 14)
+	_clock_label = _text("5:00  left", 22, Color(0.96, 0.94, 0.86))
+	_clock_label.position = Vector2(120, 14)
+	_clock_label.size = Vector2(180, 30)
+	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_gold_b = _text("0  B", 22, Color(1.0, 0.62, 0.55))
+	_gold_b.position = Vector2(300, 14)
+	_gold_b.size = Vector2(100, 28)
+	_gold_b.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var inner := _clock_panel.get_child(0)
+	inner.add_child(_gold_a)
+	inner.add_child(_clock_label)
+	inner.add_child(_gold_b)
+	add_child(_clock_panel)
+
+
+func _build_player_bar() -> void:
+	_player_bar = _framed(Vector2(760, 142), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
+	var inner := _player_bar.get_child(0)
+	_hero_label = _text("Hero", 18, Color(0.95, 0.93, 0.86))
+	_hero_label.position = Vector2(16, 10)
+	inner.add_child(_hero_label)
+	var track := ColorRect.new()
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.color = Color(0.12, 0.08, 0.08)
+	track.position = Vector2(16, 40)
+	track.size = Vector2(252, 22)
+	inner.add_child(track)
+	_hp_fill = ColorRect.new()
+	_hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hp_fill.color = Color(0.2, 0.75, 0.28)
+	_hp_fill.position = Vector2(18, 42)
+	_hp_fill.size = Vector2(248, 18)
+	inner.add_child(_hp_fill)
+	_hp_text = _text("0 / 0", 14, Color(1, 1, 1))
+	_hp_text.position = Vector2(16, 64)
+	inner.add_child(_hp_text)
+	_pocket_gold = _text("0 gold", 18, Color(1.0, 0.86, 0.28))
+	_pocket_gold.position = Vector2(140, 62)
+	inner.add_child(_pocket_gold)
+	for slot in 2:
+		var origin := Vector2(300 + slot * 92, 16)
+		var plate := ColorRect.new()
+		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		plate.color = Color(0.16, 0.2, 0.28) if slot == 0 else Color(0.22, 0.16, 0.28)
+		plate.position = origin
+		plate.size = Vector2(78, 72)
+		inner.add_child(plate)
+		var cover := ColorRect.new()
+		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cover.color = Color(0.02, 0.02, 0.03, 0.72)
+		cover.position = origin
+		cover.size = Vector2(78, 0)
+		inner.add_child(cover)
+		var key := _text(["Q", "W"][slot], 22, Color(0.96, 0.94, 0.88))
+		key.position = origin + Vector2(8, 6)
+		inner.add_child(key)
+		var time := _text("ready", 14, Color(0.9, 0.88, 0.7))
+		time.position = origin + Vector2(8, 44)
+		inner.add_child(time)
+		var name := _text("", 13, Color(0.82, 0.8, 0.72))
+		name.position = Vector2(origin.x, 92)
+		name.size = Vector2(84, 36)
+		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		inner.add_child(name)
+		_ability_covers.append(cover)
+		_ability_times.append(time)
+		_ability_names.append(name)
+	var items := _text("Items", 14, Color(0.75, 0.72, 0.62))
+	items.position = Vector2(500, 8)
+	inner.add_child(items)
+	for slot in 3:
+		var slot_box := ColorRect.new()
+		slot_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot_box.color = Color(0.1, 0.1, 0.12)
+		slot_box.position = Vector2(500 + slot * 72, 32)
+		slot_box.size = Vector2(60, 60)
+		inner.add_child(slot_box)
+		var rim := ColorRect.new()
+		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rim.color = Color(0.55, 0.48, 0.28)
+		rim.position = slot_box.position - Vector2(2, 2)
+		rim.size = slot_box.size + Vector2(4, 4)
+		inner.add_child(rim)
+		inner.move_child(rim, slot_box.get_index())
+		var empty := _text("—", 20, Color(0.45, 0.42, 0.35))
+		empty.position = slot_box.position + Vector2(18, 16)
+		inner.add_child(empty)
+	add_child(_player_bar)
 
 
 func _build_board() -> void:
@@ -278,20 +497,103 @@ func _build_board() -> void:
 	_board.visible = false
 	var dim := ColorRect.new()
 	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dim.color = Color(0.02, 0.03, 0.05, 0.62)
+	dim.color = Color(0.01, 0.02, 0.04, 0.55)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_board.add_child(dim)
-	_team_a = _board_column(Color(0.65, 0.78, 1.0))
-	_team_b = _board_column(Color(1.0, 0.62, 0.58))
-	_board.add_child(_team_a)
-	_board.add_child(_team_b)
+	var card := _framed(Vector2(940, 500), Color(0.04, 0.05, 0.07, 0.94), Color(0.95, 0.8, 0.32), 4)
+	card.name = "Card"
+	var inner := card.get_child(0)
+	var title := _text("Hold TAB     most gold after 5:00 wins", 18, Color(0.95, 0.9, 0.7))
+	title.position = Vector2(24, 12)
+	inner.add_child(title)
+	var west := _team_card("Team A", Color(0.45, 0.62, 0.95), Vector2(20, 48), _rows_a)
+	var east := _team_card("Team B", Color(0.95, 0.48, 0.42), Vector2(480, 48), _rows_b)
+	inner.add_child(west)
+	inner.add_child(east)
+	_team_a_gold = west.get_child(0).get_node("Gold") as Label
+	_team_b_gold = east.get_child(0).get_node("Gold") as Label
+	_board.add_child(card)
 	add_child(_board)
 
 
-func _board_column(color: Color) -> Label:
+func _team_card(title: String, color: Color, at: Vector2, rows: Array[HBoxContainer]) -> Control:
+	var card := _framed(Vector2(430, 420), Color(0.07, 0.08, 0.1, 0.96), color, 3)
+	card.position = at
+	var inner := card.get_child(0)
+	var heading := _text(title, 26, color)
+	heading.position = Vector2(16, 10)
+	inner.add_child(heading)
+	var gold := _text("0 gold", 18, Color(1.0, 0.86, 0.28))
+	gold.name = "Gold"
+	gold.position = Vector2(250, 16)
+	inner.add_child(gold)
+	var header := _stat_row(["Name", "K", "D", "A", "Dmg", "Gold"], Color(0.7, 0.68, 0.6))
+	header.name = "Header"
+	header.position = Vector2(12, 52)
+	inner.add_child(header)
+	for index in 6:
+		var row := _stat_row(["", "", "", "", "", ""], Color(0.93, 0.92, 0.88))
+		row.position = Vector2(12, 88 + index * 48)
+		inner.add_child(row)
+		rows.append(row)
+	return card
+
+
+func _stat_row(cells: Array, color: Color) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 6)
+	var widths: Array[int] = [108, 36, 36, 36, 64, 64]
+	for index in cells.size():
+		var label := _text(str(cells[index]), 18, color)
+		label.custom_minimum_size = Vector2(widths[index], 28)
+		row.add_child(label)
+	return row
+
+
+func _build_result() -> void:
+	_result = _framed(Vector2(560, 280), Color(0.04, 0.05, 0.07, 0.95), Color(0.95, 0.8, 0.32), 4)
+	_result.visible = false
+	var inner := _result.get_child(0)
+	_result_title = _text("TEAM A WINS", 36, Color(0.98, 0.92, 0.62))
+	_result_title.position = Vector2(24, 18)
+	_result_title.size = Vector2(510, 46)
+	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	inner.add_child(_result_title)
+	_result_body = _text("", 18, Color(0.93, 0.92, 0.86))
+	_result_body.position = Vector2(28, 78)
+	_result_body.size = Vector2(500, 180)
+	_result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inner.add_child(_result_body)
+	add_child(_result)
+
+
+func _framed(size: Vector2, fill: Color, border: Color, width: int) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _box(fill, border, width))
+	var inner := Control.new()
+	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner.custom_minimum_size = size
+	panel.add_child(inner)
+	return panel
+
+
+func _box(fill: Color, border: Color, width: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.border_color = border
+	box.set_border_width_all(width)
+	box.set_corner_radius_all(8)
+	return box
+
+
+func _text(value: String, size: int, color: Color) -> Label:
 	var label := Label.new()
+	label.text = value
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 22)
+	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
 	return label
 

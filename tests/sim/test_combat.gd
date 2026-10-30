@@ -52,6 +52,9 @@ func test_melee_dash_and_bomb() -> void:
 	hero.state.kills = 0
 	var helper := ally
 	helper.state.assists = 0
+	victim.state.kills = 4
+	var hero_gold := hero.state.gold
+	var ally_gold := helper.state.gold
 	simulation.deal_damage(helper.unit_id, victim.unit_id, 20.0)
 	simulation.deal_damage(hero.unit_id, victim.unit_id, 400.0)
 	assert_eq(hero.state.kills, 1, "the last hit is the kill")
@@ -59,6 +62,28 @@ func test_melee_dash_and_bomb() -> void:
 	assert_eq(helper.state.assists, 1, "damage inside the assist window counts")
 	assert_almost_eq(simulation.damage_from(hero.unit_id, victim.unit_id), hero.state.damage_to[victim.unit_id], 0.01)
 	assert_gte(hero.state.damage_dealt, 400.0)
+	assert_eq(hero.state.gold - hero_gold, 300, "bounty is 100 plus 50 for each kill the victim had")
+	assert_eq(helper.state.gold - ally_gold, 75, "one assist takes the whole 25 percent")
+	for unit in simulation.get_units():
+		unit.state.kills = 0
+		unit.state.assists = 0
+		unit.state.deaths = 0
+		unit.state.damage_dealt = 0.0
+	hero.state.kills = 5
+	hero.state.damage_dealt = 800.0
+	hero.state.deaths = 1
+	helper.state.kills = 1
+	helper.state.damage_dealt = 2000.0
+	helper.state.deaths = 6
+	assert_eq(simulation.mvp_unit().unit_id, hero.unit_id, "kills outweigh raw damage when deaths are high")
+	hero.combat.clear_attack()
+	hero.place_at(Transform3D(Basis.IDENTITY, Vector3.ZERO))
+	hero.state.alive = true
+	hero.state.health = 40.0
+	var hurt := hero.state.health
+	for _i in 30:
+		await get_tree().physics_frame
+	assert_gt(hero.state.health, hurt, "the centre grove should heal whoever stands in it")
 
 
 func _enemy(simulation: Simulation, team: int) -> SimUnit:
