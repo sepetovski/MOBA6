@@ -67,9 +67,11 @@ static func _floor(layout: ArenaLayout) -> StaticBody3D:
 		shape_points.append(Vector3(a.x, 0.0, a.y))
 		shape_points.append(Vector3(a.x, -0.4, a.y))
 	var mesh_node := MeshInstance3D.new()
-	mesh_node.name = "Mesh"
-	mesh_node.mesh = tool.commit()
-	mesh_node.material_override = GreyMaterials.get_material(FLOOR_ALBEDO)
+	mesh_node.name = "MeadowFloor"
+	var floor_mesh := tool.commit()
+	floor_mesh.surface_set_material(0, GreyMaterials.meadow_material())
+	mesh_node.mesh = floor_mesh
+	mesh_node.material_override = GreyMaterials.meadow_material()
 	body.add_child(mesh_node)
 	var shape_node := CollisionShape3D.new()
 	var shape := ConvexPolygonShape3D.new()
@@ -174,8 +176,10 @@ static func _floor_quad(parent: Node3D, x0: float, x1: float, z0: float, z1: flo
 	var d := Vector3(x0, 0, z1)
 	_quad(tool, a, b, c, d, Vector3.UP)
 	var mesh_node := MeshInstance3D.new()
-	mesh_node.mesh = tool.commit()
-	mesh_node.material_override = GreyMaterials.get_material(FLOOR_ALBEDO)
+	var floor_mesh := tool.commit()
+	floor_mesh.surface_set_material(0, GreyMaterials.meadow_material())
+	mesh_node.mesh = floor_mesh
+	mesh_node.material_override = GreyMaterials.meadow_material()
 	body.add_child(mesh_node)
 	var shape_node := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -347,11 +351,11 @@ static func _doors(layout: ArenaLayout) -> Node3D:
 static func _environment() -> WorldEnvironment:
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.74, 0.75, 0.77)
+	environment.background_color = Color(0.62, 0.78, 0.92)
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.45, 0.45, 0.45)
-	environment.ambient_light_energy = 0.6
+	environment.ambient_light_color = Color(0.55, 0.58, 0.5)
+	environment.ambient_light_energy = 0.55
 	var world := WorldEnvironment.new()
 	world.name = "WorldEnvironment"
 	world.environment = environment
@@ -363,7 +367,8 @@ static func _sun() -> DirectionalLight3D:
 	sun.rotation_degrees = Vector3(-48, 35, 0)
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 120.0
-	sun.light_energy = 1.1
+	sun.light_color = Color(1.0, 0.96, 0.88)
+	sun.light_energy = 1.15
 	return sun
 
 static func _edge_kind(a: Vector2, b: Vector2, apothem: float) -> String:
@@ -384,10 +389,13 @@ static func _tri(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, normal: 
 		b = c
 		c = swap
 	tool.set_normal(normal)
+	tool.set_uv(Vector2(a.x, a.z) / 4.0)
 	tool.add_vertex(a)
 	tool.set_normal(normal)
+	tool.set_uv(Vector2(b.x, b.z) / 4.0)
 	tool.add_vertex(b)
 	tool.set_normal(normal)
+	tool.set_uv(Vector2(c.x, c.z) / 4.0)
 	tool.add_vertex(c)
 
 static func _quad(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3) -> void:

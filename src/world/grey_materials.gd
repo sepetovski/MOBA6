@@ -3,7 +3,17 @@ class_name GreyMaterials extends RefCounted
 ## Shared gray materials. One grid texture, triplanar in world space, so every surface reads as 1 m squares.
 
 static var _grid: Texture2D
+static var _meadow: StandardMaterial3D
 static var _by_albedo: Dictionary = {}
+
+
+static func meadow_material() -> StandardMaterial3D:
+	if _meadow != null:
+		return _meadow
+	_meadow = StandardMaterial3D.new()
+	_meadow.albedo_color = Color(0.45, 0.68, 0.32)
+	_meadow.roughness = 1.0
+	return _meadow
 
 static func get_material(albedo: float) -> StandardMaterial3D:
 	var key := snappedf(albedo, 0.001)
