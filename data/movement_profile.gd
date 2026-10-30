@@ -26,6 +26,15 @@ class_name MovementProfile extends Resource
 @export var wall_jump_push := 7.0       # m/s, horizontal kick away from the wall
 @export var wall_jump_normal_y := 0.45  # a contact flatter than this is a wall, not a floor
 
+@export_group("Dash")
+@export var dash_speed := 11.0          # m/s during the burst. The hero resource raises this under a higher cap
+@export var dash_duration := 0.18       # s, how long the burst holds its speed
+@export var dash_charges := 2           # Shift spends one. Empty means both are recharging
+@export var dash_recharge := 2.6        # s to restore one charge when the other is still ready
+@export var dash_recharge_fast := 1.15  # s per charge once both are spent. Faster than waiting out two slow charges
+@export var dash_slide_grace := 0.34    # s after the burst where Ctrl still becomes the fast slide
+@export var dash_slide_seconds := 0.9   # s the dash-slide holds dash_speed before normal slide friction
+
 @export_group("Slide")
 @export var slide_enter_speed := 4.0    # m/s needed to start a slide. A run is 6 m/s, so Ctrl while running slides
 @export var slide_boost := 1.5          # m/s added on entry

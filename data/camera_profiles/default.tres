@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_profile")
 fov_deg = 40.0
-pitch_deg = 55.0
-distance = 28.0
+pitch_deg = 50.0
+distance = 32.0
 distance_min = 18.0
 distance_max = 40.0
 zoom_step = 2.0

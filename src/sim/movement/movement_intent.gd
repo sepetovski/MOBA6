@@ -12,12 +12,14 @@ var jump_pressed := false            # true only on the tick the key went down
 var jump_held := false
 var crouch_slide_pressed := false    # true only on the tick the key went down
 var crouch_slide_held := false
+var dash_pressed := false            # true only on the tick Shift went down
 
 
 func clear_edges() -> void:
 	stop = false
 	jump_pressed = false
 	crouch_slide_pressed = false
+	dash_pressed = false
 
 
 func clone() -> MovementIntent:
@@ -31,4 +33,5 @@ func clone() -> MovementIntent:
 	copy.jump_held = jump_held
 	copy.crouch_slide_pressed = crouch_slide_pressed
 	copy.crouch_slide_held = crouch_slide_held
+	copy.dash_pressed = dash_pressed
 	return copy

@@ -8,6 +8,7 @@ const ACTIONS := {
 	"select": "mouse_left",
 	"jump": KEY_SPACE,
 	"crouch_slide": KEY_CTRL,
+	"dash": KEY_SHIFT,
 	"stop": KEY_S,
 	"ability_1": KEY_Q,
 	"ability_2": KEY_W,

@@ -83,6 +83,9 @@ func apply_command(cmd: Command) -> void:
 				intent.crouch_slide_held = true
 			else:
 				intent.crouch_slide_held = false
+		Command.Kind.DASH:
+			if cmd.pressed:
+				intent.dash_pressed = true
 
 
 func sim_step(dt: float, sim: Simulation) -> void:

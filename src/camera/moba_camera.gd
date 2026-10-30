@@ -21,6 +21,24 @@ var _bounds := AABB()
 var _has_bounds := false
 var _drag := false
 var _drag_from := Vector2.ZERO
+var _presenting := false
+
+
+func set_presenting(on: bool) -> void:
+	_presenting = on
+	if not on:
+		_distance_target = _profile().distance
+
+
+func present(point: Vector3, distance: float, instant := false) -> void:
+	_presenting = true
+	_target = null
+	_distance_target = maxf(distance, 8.0)
+	_goal = _clamp_xz(Vector3(point.x, point.y, point.z))
+	if instant:
+		_focus = _goal
+		_distance = _distance_target
+		global_position = _focus
 
 
 func _ready() -> void:
@@ -117,6 +135,13 @@ func _process(delta: float) -> void:
 	var tuned := _profile()
 	_distance = _approach(_distance, _distance_target, tuned.zoom_smooth, delta)
 	_apply_rig()
+	if _presenting:
+		_goal = _clamp_xz(_goal)
+		_focus.x = _approach(_focus.x, _goal.x, tuned.follow_smooth, delta)
+		_focus.z = _approach(_focus.z, _goal.z, tuned.follow_smooth, delta)
+		_focus.y = _approach(_focus.y, _goal.y, tuned.follow_smooth, delta)
+		global_position = _focus
+		return
 	var edge := _edge_velocity()
 	if _locked and edge != Vector3.ZERO:
 		set_locked(false)

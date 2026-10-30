@@ -4,3 +4,19 @@
 
 [resource]
 script = ExtResource("1_profile")
+acceleration = 64.0
+air_control = 0.68
+floor_snap_length = 0.42
+step_height = 0.45
+vault_duration = 0.26
+mantle_duration = 0.4
+vault_min_speed = 2.2
+vault_reach = 1.65
+max_speed_cap = 16.0
+dash_speed = 13.5
+dash_duration = 0.18
+dash_charges = 2
+dash_recharge = 2.6
+dash_recharge_fast = 1.15
+dash_slide_grace = 0.34
+dash_slide_seconds = 0.9

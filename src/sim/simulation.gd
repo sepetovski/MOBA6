@@ -34,6 +34,13 @@ func _init() -> void:
 
 
 func start_match(config: MatchConfig, arena: Node3D) -> void:
+	prepare_match(config, arena)
+	begin_countdown()
+
+
+func prepare_match(config: MatchConfig, arena: Node3D) -> void:
+	if _started:
+		return
 	_config = config
 	_arena = arena
 	_info = arena.get_node("ArenaInfo") as ArenaInfo
@@ -42,12 +49,18 @@ func start_match(config: MatchConfig, arena: Node3D) -> void:
 	_spawn_roster()
 	_spawn_towers()
 	_spawn_groves()
-	_match.begin_countdown(config.countdown_seconds)
+	_set_frozen(true)
+	_started = true
+
+
+func begin_countdown() -> void:
+	if _config == null:
+		return
+	_match.begin_countdown(_config.countdown_seconds)
 	_set_frozen(true)
 	_set_match_state(Match.State.COUNTDOWN)
 	if _match.ticks_left <= 0:
 		_enter_running()
-	_started = true
 
 
 func submit_command(cmd: Command) -> void:
@@ -537,10 +550,11 @@ func _hurt_destructibles(node: Node, point: Vector3, reach: float, amount: float
 
 
 func _spawn_towers() -> void:
+	# Off the dirt road so the lane stays a path. One tower each, still in its own half.
 	var west := TeamTower.new()
-	west.build(Team.Id.A, Vector3(-30.0, 0.0, 0.0))
+	west.build(Team.Id.A, Vector3(-26.0, 0.0, 16.0))
 	var east := TeamTower.new()
-	east.build(Team.Id.B, Vector3(30.0, 0.0, 0.0))
+	east.build(Team.Id.B, Vector3(26.0, 0.0, -16.0))
 	_arena.add_child(west)
 	_arena.add_child(east)
 	_towers.append(west)
