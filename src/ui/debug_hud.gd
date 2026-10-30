@@ -33,6 +33,10 @@ var _result: PanelContainer
 var _result_title: Label
 var _result_body: Label
 var _last_hit: Dictionary = {}
+var _map: Control
+var _map_dots: Array[ColorRect] = []
+const _MAP_SIZE := 168.0
+const _MAP_HALF := 42.0
 var _collision_root: Node3D
 var _collision_on := false
 var _freecam: Camera3D
@@ -65,6 +69,7 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 	_build_result()
 	for unit in sim.get_units():
 		_add_unit(unit)
+	_build_minimap()
 	GameEvents.damage_dealt.connect(_show_damage)
 	GameEvents.gold_awarded.connect(_show_gold)
 	_collision_root = Node3D.new()
@@ -271,6 +276,7 @@ func _update_score() -> void:
 		_gold_a.text = "A  %d" % _sim.team_gold(Team.Id.A)
 		_gold_b.text = "%d  B" % _sim.team_gold(Team.Id.B)
 	_place_player_bar(view, human)
+	_update_minimap(view)
 	_fill_rows(_rows_a, Team.Id.A)
 	_fill_rows(_rows_b, Team.Id.B)
 	if _team_a_gold != null:
@@ -549,6 +555,67 @@ func _stat_row(cells: Array, color: Color) -> HBoxContainer:
 		label.custom_minimum_size = Vector2(widths[index], 28)
 		row.add_child(label)
 	return row
+
+
+func _build_minimap() -> void:
+	_map = _framed(Vector2(_MAP_SIZE + 16.0, _MAP_SIZE + 28.0), Color(0.05, 0.07, 0.04, 0.92), Color(0.55, 0.4, 0.18), 3)
+	var inner := _map.get_child(0)
+	var title := _text("Map", 14, Color(0.9, 0.86, 0.68))
+	title.position = Vector2(8, 2)
+	inner.add_child(title)
+	var board := Control.new()
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	board.position = Vector2(8, 20)
+	inner.add_child(board)
+	var field := ColorRect.new()
+	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	field.color = Color(0.28, 0.48, 0.16)
+	field.size = Vector2(_MAP_SIZE, _MAP_SIZE)
+	board.add_child(field)
+	var lane := ColorRect.new()
+	lane.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lane.color = Color(0.48, 0.3, 0.15)
+	var lane_h := _MAP_SIZE * (12.8 / 84.0)
+	lane.position = Vector2(0.0, _MAP_SIZE * 0.5 - lane_h * 0.5)
+	lane.size = Vector2(_MAP_SIZE, lane_h)
+	board.add_child(lane)
+	var worn := ColorRect.new()
+	worn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	worn.color = Color(0.1, 0.09, 0.08)
+	var worn_h := _MAP_SIZE * (3.6 / 84.0)
+	worn.position = Vector2(0.0, _MAP_SIZE * 0.5 - worn_h * 0.5)
+	worn.size = Vector2(_MAP_SIZE, worn_h)
+	board.add_child(worn)
+	for unit in _units:
+		var dot := ColorRect.new()
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mine := unit.state.controller == UnitState.Controller.HUMAN
+		dot.size = Vector2(9, 9) if mine else Vector2(6, 6)
+		dot.color = Color(0.4, 0.62, 1.0) if unit.team == Team.Id.A else Color(0.95, 0.32, 0.24)
+		board.add_child(dot)
+		_map_dots.append(dot)
+	add_child(_map)
+
+
+func _update_minimap(view: Vector2) -> void:
+	if _map == null:
+		return
+	_map.position = Vector2(16.0, view.y - 214.0)
+	for index in _map_dots.size():
+		var dot := _map_dots[index]
+		var unit := _units[index]
+		if not unit.state.alive:
+			dot.visible = false
+			continue
+		dot.visible = true
+		dot.position = _map_point(unit.global_position) - dot.size * 0.5
+
+
+func _map_point(world: Vector3) -> Vector2:
+	var span := _MAP_HALF * 2.0
+	var x := clampf((world.x + _MAP_HALF) / span, 0.0, 1.0) * _MAP_SIZE
+	var y := clampf((world.z + _MAP_HALF) / span, 0.0, 1.0) * _MAP_SIZE
+	return Vector2(x, y)
 
 
 func _build_result() -> void:

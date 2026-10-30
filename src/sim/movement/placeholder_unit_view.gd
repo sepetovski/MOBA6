@@ -13,6 +13,7 @@ var _nose: MeshInstance3D
 var _arrow: MeshInstance3D
 var _shadow: MeshInstance3D
 var _marker: MeshInstance3D
+var _blob_on := true
 
 
 func bind(unit: CharacterBody3D) -> void:
@@ -73,7 +74,17 @@ func _process(_delta: float) -> void:
 	_place_aids(profile)
 
 
+func hide_blob() -> void:
+	_blob_on = false
+	if _shadow != null:
+		_shadow.visible = false
+
+
 func _place_aids(profile: MovementProfile) -> void:
+	if not _blob_on:
+		if _shadow != null:
+			_shadow.visible = false
+		return
 	var below := _ray_down(_body.global_position)
 	if below.is_empty():
 		_shadow.visible = false

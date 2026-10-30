@@ -23,6 +23,7 @@ static func build(layout: ArenaLayout) -> Node3D:
 	region.add_child(_floor(layout))
 	root.add_child(_vista_ground())
 	root.add_child(_grass_skin(layout))
+	root.add_child(_ground_paths())
 	region.add_child(_walls(layout))
 	region.add_child(_gates(layout))
 	region.add_child(_props(layout))
@@ -51,6 +52,33 @@ static func _grass_skin(layout: ArenaLayout) -> MeshInstance3D:
 	node.material_override = GreyMaterials.meadow_material()
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node
+
+
+static func _ground_paths() -> Node3D:
+	var root := Node3D.new()
+	root.name = "GroundPaths"
+	_path_strip(root, -36.0, 36.0, -6.4, 6.4, Color(0.5, 0.32, 0.16), 0.055)
+	_path_strip(root, -34.0, 34.0, -1.8, 1.8, Color(0.12, 0.1, 0.09), 0.065)
+	_path_strip(root, -3.6, 3.6, -33.0, -7.0, Color(0.42, 0.26, 0.13), 0.055)
+	_path_strip(root, -3.6, 3.6, 7.0, 33.0, Color(0.42, 0.26, 0.13), 0.055)
+	_path_strip(root, -24.0, -12.0, 9.5, 13.5, Color(0.16, 0.13, 0.11), 0.055)
+	_path_strip(root, 12.0, 24.0, -13.5, -9.5, Color(0.16, 0.13, 0.11), 0.055)
+	return root
+
+
+static func _path_strip(parent: Node3D, x0: float, x1: float, z0: float, z1: float, color: Color, height: float) -> void:
+	var box := BoxMesh.new()
+	box.size = Vector3(absf(x1 - x0), 0.04, absf(z1 - z0))
+	var node := MeshInstance3D.new()
+	node.mesh = box
+	node.position = Vector3((x0 + x1) * 0.5, height, (z0 + z1) * 0.5)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 1.0
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(node)
 
 
 static func _vista_ground() -> MeshInstance3D:

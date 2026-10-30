@@ -14,6 +14,11 @@ var _markers: Array[ClickMarker] = []
 var _reticle: GroundRing
 var _hover: GroundRing
 var _selection: GroundRing
+var _beacon: Node3D
+var _beacon_ring: GroundRing
+var _beacon_dot: MeshInstance3D
+var _beacon_on := false
+var _beacon_point := Vector3.ZERO
 
 
 func bind(controller: PlayerController, cam: MobaCamera, unit: Node3D, profile: CameraProfile) -> void:
@@ -30,6 +35,7 @@ func bind(controller: PlayerController, cam: MobaCamera, unit: Node3D, profile: 
 	_build_reticle()
 	_build_hover()
 	_build_selection()
+	_build_beacon()
 	if controller != null and not controller.command_issued.is_connected(_on_command):
 		controller.command_issued.connect(_on_command)
 
@@ -37,6 +43,7 @@ func bind(controller: PlayerController, cam: MobaCamera, unit: Node3D, profile: 
 func _process(_delta: float) -> void:
 	_update_reticle()
 	_update_hover()
+	_update_beacon()
 
 
 func _on_command(cmd: Command) -> void:
@@ -48,6 +55,7 @@ func _on_command(cmd: Command) -> void:
 		if result.hit:
 			normal = result.normal
 	_spawn(cmd.point, normal)
+	_show_beacon(cmd.point)
 
 
 func _spawn(point: Vector3, normal: Vector3) -> void:
@@ -150,6 +158,54 @@ func _build_selection() -> void:
 	_selection.set_surface_lift(tuned.surface_lift)
 	_selection.configure(radius + tuned.selection_padding, tuned.ring_thickness, tuned.selection_color, tuned.selection_color.a)
 	_selection.attach_to(_unit)
+
+
+func _build_beacon() -> void:
+	_beacon = Node3D.new()
+	_beacon.name = "Destination"
+	_beacon.visible = false
+	_beacon.top_level = true
+	add_child(_beacon)
+	_beacon_ring = GroundRing.new()
+	_beacon_ring.name = "BeaconRing"
+	_beacon.add_child(_beacon_ring)
+	_beacon_ring.configure(1.15, 0.16, Color(1.0, 0.82, 0.22), 0.95)
+	var dot := CylinderMesh.new()
+	dot.top_radius = 0.18
+	dot.bottom_radius = 0.18
+	dot.height = 0.04
+	_beacon_dot = MeshInstance3D.new()
+	_beacon_dot.mesh = dot
+	var paint := StandardMaterial3D.new()
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.albedo_color = Color(1.0, 0.9, 0.45)
+	paint.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_beacon_dot.material_override = paint
+	_beacon_dot.position = Vector3(0, 0.04, 0)
+	_beacon_dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_beacon.add_child(_beacon_dot)
+
+
+func _show_beacon(point: Vector3) -> void:
+	_beacon_on = true
+	_beacon_point = Vector3(point.x, 0.06, point.z)
+	_beacon.visible = true
+	_beacon.global_position = _beacon_point
+
+
+func _update_beacon() -> void:
+	if not _beacon_on or _beacon == null:
+		return
+	if _unit != null and is_instance_valid(_unit):
+		var flat := _unit.global_position - _beacon_point
+		flat.y = 0.0
+		if flat.length() < 1.25:
+			_beacon_on = false
+			_beacon.visible = false
+			return
+	var pulse := 1.0 + 0.16 * sin(float(Time.get_ticks_msec()) * 0.007)
+	_beacon_ring.scale = Vector3(pulse, 1.0, pulse)
+	_beacon.rotate_y(0.01)
 
 
 func _pointer() -> Vector2:

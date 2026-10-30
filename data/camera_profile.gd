@@ -19,9 +19,9 @@ class_name CameraProfile extends Resource
 @export var occlusion_fade_speed := 6.0      # transparency per second
 @export var sample_heights_m: PackedFloat32Array = PackedFloat32Array([0.2, 0.9, 1.7]) # m above the focus origin (feet)
 @export var surface_lift := 0.02             # m, feedback meshes sit off the surface
-@export var click_radius_start := 0.3        # m
-@export var click_radius_end := 1.0          # m
-@export var click_fade_seconds := 0.4        # s
+@export var click_radius_start := 0.45       # m
+@export var click_radius_end := 2.1          # m
+@export var click_fade_seconds := 1.15       # s
 @export var click_pool_size := 4
 @export var reticle_radius := 0.4            # m
 @export var ring_thickness := 0.1            # m
@@ -29,5 +29,5 @@ class_name CameraProfile extends Resource
 @export var default_unit_radius := 0.4       # m, used when the unit has no "radius" meta
 @export var selection_color := Color(0.25, 0.55, 0.95, 1.0)
 @export var hover_color := Color(0.75, 0.78, 0.82, 0.45)
-@export var click_color := Color(0.92, 0.92, 0.92, 1.0)
+@export var click_color := Color(1.0, 0.86, 0.28, 1.0)
 @export var reticle_color := Color(0.88, 0.88, 0.88, 0.85)

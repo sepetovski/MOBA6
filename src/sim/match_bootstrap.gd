@@ -39,6 +39,11 @@ func _ready() -> void:
 		player.enabled = false
 		if player.settings != null:
 			player.settings.confine_mouse = false
+	var feedback := InputFeedback.new()
+	feedback.name = "InputFeedback"
+	add_child(feedback)
+	if human != null:
+		feedback.bind(player, camera, human, camera.profile)
 	var fader := OcclusionFader.new()
 	fader.name = "OcclusionFader"
 	add_child(fader)

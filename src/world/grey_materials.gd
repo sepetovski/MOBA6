@@ -14,7 +14,7 @@ static func meadow_material() -> StandardMaterial3D:
 	_meadow.albedo_color = Color(0.78, 0.9, 0.55)
 	_meadow.albedo_texture = _grass_texture()
 	_meadow.roughness = 1.0
-	_meadow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_meadow.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	_meadow.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_meadow.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_meadow.uv1_triplanar = true
@@ -38,10 +38,12 @@ static func _grass_texture() -> Texture2D:
 			var wave := 0.5 + 0.5 * sin((u * 4.0 + v * 3.0) * TAU)
 			var speckle := 0.5 + 0.5 * sin((u * 13.0 - v * 11.0) * TAU)
 			var color := lush.lerp(bright, 0.35 + wave * 0.2)
-			if speckle > 0.86:
-				color = color.lerp(yellow, 0.35)
-			elif speckle < 0.06:
-				color = color.lerp(soil, 0.28)
+			if speckle > 0.84:
+				color = color.lerp(yellow, 0.4)
+			elif speckle < 0.12:
+				color = color.lerp(soil, 0.55)
+			elif speckle < 0.18:
+				color = color.lerp(Color(0.1, 0.09, 0.08), 0.65)
 			image.set_pixel(x, y, color)
 	var texture := ImageTexture.create_from_image(image)
 	return texture
