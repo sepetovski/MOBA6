@@ -53,11 +53,24 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Height stand / crouch / slide | m | 1.8 / 1.1 / 0.8 | `data/movement_profile.gd` | |
 | Slide tilt | deg | 25 | `data/movement_profile.gd` | Placeholder view |
 | Rise stretch |  | 1.1 | `data/movement_profile.gd` | Placeholder view while rising |
+| Dash speed | m/s | 11, hero 13.5 | `data/movement_profile.gd` | Shift burst. Hero cap is 16 so the burst is not clipped |
+| Dash duration | s | 0.18 | `data/movement_profile.gd` | How long the burst holds its speed |
+| Dash charges |  | 2 | `data/movement_profile.gd` | Shift spends one |
+| Dash recharge | s | 2.6 | `data/movement_profile.gd` | Restore one charge while the other is ready |
+| Dash recharge, both spent | s | 1.15 | `data/movement_profile.gd` | Per charge once both are empty. Faster than two slow charges |
+| Dash slide grace | s | 0.34 | `data/movement_profile.gd` | After the burst, Ctrl still starts the fast slide |
+| Dash slide hold | s | 0.9 | `data/movement_profile.gd` | That slide keeps dash speed, then normal friction |
+| Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
+| Hero air control |  | 0.68 | `data/movement_profiles/gladiator.tres` | Steerable jumps |
+| Hero vault / mantle time | s | 0.26 / 0.4 | `data/movement_profiles/gladiator.tres` | Quicker grab onto rocks |
+| Hero vault reach | m | 1.65 | `data/movement_profiles/gladiator.tres` | Easier to catch a ledge |
+| Hero vault min speed | m/s | 2.2 | `data/movement_profiles/gladiator.tres` | A short run can still vault |
+| Hero step height | m | 0.45 | `data/movement_profiles/gladiator.tres` | Small lips on rocks |
 | Largest running jump | m | 3.5 | measured | Gap between lips the default profile clears, searched in 0.25 m steps. 3.75 m does not |
 | Largest slide-jump | m | 4.5 | measured | Same search. A slide from 6 m/s, jump on the second tick. 4.75 m does not |
 | Camera vertical FOV | deg | 40 | `data/camera_profiles/default.tres` | M2 brief. Keep aspect on height |
-| Camera pitch | deg below horizontal | 55 | `data/camera_profiles/default.tres` | Tune within 45–65. Fixed yaw, camera on the +Z side |
-| Camera distance | m | 28 | `data/camera_profiles/default.tres` | Initial rig length. Min 18, max 40 |
+| Camera pitch | deg below horizontal | 50 | `data/camera_profiles/default.tres` | A little lower than 55 so the forest reads. Still inside 45–65. Fixed yaw, camera on the +Z side |
+| Camera distance | m | 32 | `data/camera_profiles/default.tres` | Initial rig length. Min 18, max 40 |
 | Zoom step | m / notch | 2 | `data/camera_profiles/default.tres` | Wheel `zoom_in` / `zoom_out` |
 | Zoom smoothing | 1/s | 12 | `data/camera_profiles/default.tres` | `1 - exp(-k dt)`. 0 snaps |
 | Follow smoothing | 1/s | 10 | `data/camera_profiles/default.tres` | Horizontal focus. 0 is rigid |

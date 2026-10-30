@@ -4,7 +4,7 @@ class_name Command extends RefCounted
 ## Simulation.submit_command stamps tick. pressed applies to STEER, CROUCH_SLIDE and JUMP
 ## (a JUMP with pressed = false is the key release, which variable jump height needs).
 
-enum Kind { MOVE_TO, STEER, STOP, JUMP, CROUCH_SLIDE, CAST, ATTACK_TARGET, AIM }
+enum Kind { MOVE_TO, STEER, STOP, JUMP, CROUCH_SLIDE, CAST, ATTACK_TARGET, AIM, DASH }
 
 var tick: int
 var seq: int

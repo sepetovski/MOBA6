@@ -25,7 +25,8 @@ func build(team_id: int, at: Vector3) -> void:
 	body.mesh = mesh
 	body.position = Vector3(0, 2.1, 0)
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.55, 0.55, 0.55)
+	material.albedo_color = Color(0.55, 0.5, 0.4)
+	material.roughness = 0.9
 	body.material_override = material
 	add_child(body)
 	var shape_node := CollisionShape3D.new()

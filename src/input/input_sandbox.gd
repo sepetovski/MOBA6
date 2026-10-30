@@ -96,7 +96,7 @@ func _build_rig() -> void:
 	var label := Label.new()
 	label.position = Vector2(16, 16)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.text = "Right-click moves. Hold steers. S stop. Space jump. Ctrl crouch. Y unlocks the camera."
+	label.text = "Right-click moves. Hold steers. S stop. Space jump. Shift dash. Ctrl crouch. Y unlocks the camera."
 	layer.add_child(label)
 	add_child(layer)
 

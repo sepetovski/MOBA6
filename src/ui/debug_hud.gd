@@ -37,6 +37,9 @@ var _map: Control
 var _map_dots: Array[ColorRect] = []
 const _MAP_SIZE := 168.0
 const _MAP_HALF := 42.0
+var show_chrome := true
+var show_result := true
+var _dash_fills: Array[ColorRect] = []
 var _collision_root: Node3D
 var _collision_on := false
 var _freecam: Camera3D
@@ -119,6 +122,7 @@ func _process(delta: float) -> void:
 	_toggle_overlays()
 	_cheats()
 	_fly(delta)
+	_apply_chrome()
 	_update_plates()
 	_update_score()
 	_readout.text = _status()
@@ -283,7 +287,7 @@ func _update_score() -> void:
 		_team_a_gold.text = "%d gold" % _sim.team_gold(Team.Id.A)
 		_team_b_gold.text = "%d gold" % _sim.team_gold(Team.Id.B)
 	if _board != null:
-		_board.visible = Input.is_key_pressed(KEY_TAB)
+		_board.visible = show_chrome and Input.is_key_pressed(KEY_TAB)
 		_board.size = view
 		var card := _board.get_node_or_null("Card") as Control
 		if card != null:
@@ -303,6 +307,13 @@ func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 	_hp_fill.color = Color(lerpf(0.86, 0.18, fraction), lerpf(0.22, 0.78, fraction), 0.22)
 	_hp_text.text = "%d / %d" % [int(round(human.state.health)), int(round(human.state.max_health))]
 	_pocket_gold.text = "%d gold" % human.state.gold
+	for index in _dash_fills.size():
+		var pip := _dash_fills[index]
+		pip.size.x = 36.0 * human.motor.dash_fill(index)
+		if human.motor.dash_charges <= 0:
+			pip.color = Color(1.0, 0.78, 0.28)
+		else:
+			pip.color = Color(0.45, 0.78, 0.95)
 	if human.combat == null:
 		return
 	for slot in _ability_covers.size():
@@ -339,6 +350,9 @@ func _fill_rows(rows: Array[HBoxContainer], team: int) -> void:
 
 func _update_result(view: Vector2) -> void:
 	if _result == null:
+		return
+	if not show_result:
+		_result.visible = false
 		return
 	var finished := _sim.get_match_state() == Match.State.FINISHED
 	_result.visible = finished
@@ -473,6 +487,23 @@ func _build_player_bar() -> void:
 		_ability_covers.append(cover)
 		_ability_times.append(time)
 		_ability_names.append(name)
+	var dash_label := _text("Shift", 14, Color(0.82, 0.78, 0.64))
+	dash_label.position = Vector2(16, 90)
+	inner.add_child(dash_label)
+	for index in 2:
+		var dash_track := ColorRect.new()
+		dash_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dash_track.color = Color(0.1, 0.1, 0.12)
+		dash_track.position = Vector2(70.0 + float(index) * 46.0, 94.0)
+		dash_track.size = Vector2(36, 10)
+		inner.add_child(dash_track)
+		var pip := ColorRect.new()
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pip.color = Color(0.45, 0.78, 0.95)
+		pip.position = dash_track.position
+		pip.size = Vector2(36, 10)
+		inner.add_child(pip)
+		_dash_fills.append(pip)
 	var items := _text("Items", 14, Color(0.75, 0.72, 0.62))
 	items.position = Vector2(500, 8)
 	inner.add_child(items)
@@ -494,6 +525,21 @@ func _build_player_bar() -> void:
 		empty.position = slot_box.position + Vector2(18, 16)
 		inner.add_child(empty)
 	add_child(_player_bar)
+
+
+func _apply_chrome() -> void:
+	if _readout != null:
+		_readout.visible = show_chrome
+	if _score_panel != null:
+		_score_panel.visible = show_chrome
+	if _clock_panel != null:
+		_clock_panel.visible = show_chrome
+	if _player_bar != null:
+		_player_bar.visible = show_chrome
+	if _map != null:
+		_map.visible = show_chrome
+	if _help != null and not show_chrome:
+		_help.visible = false
 
 
 func _build_board() -> void:

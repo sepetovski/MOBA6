@@ -66,12 +66,21 @@ var _forced_ignore_gravity := true
 var _forced_vy := 0.0
 var _forced_hit := false
 
+var dash_charges := 2
+var dash_recharge_left := 0.0
+var dash_refill_fast := false
+var _dash_time := 0.0
+var _dash_grace := 0.0
+var _dash_dir := Vector3(0, 0, -1)
+var _coast_left := 0.0
+
 
 func _init(body: CharacterBody3D, movement_profile: MovementProfile, nav_map: RID) -> void:
 	_body = body
 	profile = movement_profile
 	_map = nav_map
 	_follower.arrive_distance = profile.arrive_distance
+	dash_charges = profile.dash_charges
 	_configure_body()
 
 
@@ -136,6 +145,17 @@ func get_horizontal_speed() -> float:
 	return Vector2(_body.velocity.x, _body.velocity.z).length()
 
 
+func dash_fill(index: int) -> float:
+	if index < dash_charges:
+		return 1.0
+	if index > dash_charges:
+		return 0.0
+	var span := profile.dash_recharge_fast if dash_refill_fast else profile.dash_recharge
+	if span <= 0.001:
+		return 0.0
+	return clampf(1.0 - dash_recharge_left / span, 0.0, 1.0)
+
+
 func has_goal() -> bool:
 	return _has_goal
 
@@ -154,6 +174,12 @@ func reset_motion() -> void:
 	_air_reference_speed = 0.0
 	_air_jumps_left = profile.air_jumps
 	_wall_push = Vector3.ZERO
+	dash_charges = profile.dash_charges
+	dash_recharge_left = 0.0
+	dash_refill_fast = false
+	_dash_time = 0.0
+	_dash_grace = 0.0
+	_coast_left = 0.0
 	_body.velocity = Vector3.ZERO
 	_set_capsule(profile.height_stand)
 	_set_state(State.GROUNDED)
@@ -161,11 +187,12 @@ func reset_motion() -> void:
 
 func readout() -> String:
 	var grounded := "yes" if _body.is_on_floor() else "no"
-	return "state %s   speed %.2f   grounded %s   height %.2f" % [
+	return "state %s   speed %.2f   grounded %s   height %.2f   dashes %d" % [
 		State.keys()[state],
 		get_horizontal_speed(),
 		grounded,
 		_body.global_position.y,
+		dash_charges,
 	]
 
 
@@ -201,6 +228,22 @@ func _tick_timers(dt: float) -> void:
 	_coyote_left = maxf(_coyote_left - dt, 0.0)
 	_jump_buffer_left = maxf(_jump_buffer_left - dt, 0.0)
 	_slide_cd_left = maxf(_slide_cd_left - dt, 0.0)
+	if _dash_time > 0.0:
+		_dash_time = maxf(_dash_time - dt, 0.0)
+		if _dash_time <= 0.0:
+			_dash_grace = profile.dash_slide_grace
+	else:
+		_dash_grace = maxf(_dash_grace - dt, 0.0)
+	_coast_left = maxf(_coast_left - dt, 0.0)
+	if dash_charges < profile.dash_charges:
+		dash_recharge_left = maxf(dash_recharge_left - dt, 0.0)
+		if dash_recharge_left <= 0.0:
+			dash_charges += 1
+			if dash_charges < profile.dash_charges:
+				dash_recharge_left = profile.dash_recharge_fast if dash_refill_fast else profile.dash_recharge
+			else:
+				dash_refill_fast = false
+				dash_recharge_left = 0.0
 
 
 func _apply_intent(intent: MovementIntent) -> void:
@@ -231,10 +274,14 @@ func _apply_intent(intent: MovementIntent) -> void:
 
 
 func _resolve_transitions(intent: MovementIntent) -> bool:
+	_try_dash(intent)
 	if state == State.SLIDING:
+		_try_dash_slide(intent)
 		_slide_jump_or_exit(intent)
 		return _jumped_this_step
 	if _try_traversal(intent):
+		return false
+	if _try_dash_slide(intent):
 		return false
 	match state:
 		State.GROUNDED:
@@ -260,7 +307,7 @@ func _resolve_transitions(intent: MovementIntent) -> bool:
 func _slide_jump_or_exit(intent: MovementIntent) -> bool:
 	if _try_jump(intent):
 		return true
-	var slow := _slide_speed < profile.slide_min_speed
+	var slow := _slide_speed < profile.slide_min_speed and _coast_left <= 0.0
 	var released := not intent.crouch_slide_held
 	if not slow and not released:
 		return false
@@ -347,6 +394,76 @@ func _wall_normal() -> Vector3:
 	return Vector3(best.x, 0.0, best.z).normalized()
 
 
+func _try_dash(intent: MovementIntent) -> void:
+	if not intent.dash_pressed or not can_move:
+		return
+	if state == State.VAULTING or state == State.MANTLING or state == State.FORCED:
+		return
+	if dash_charges <= 0:
+		return
+	_spend_dash()
+	_dash_dir = _dash_direction(intent)
+	_dash_time = profile.dash_duration
+	_dash_grace = 0.0
+	_coast_left = 0.0
+	if state == State.SLIDING or state == State.CROUCHED:
+		_set_capsule(profile.height_stand)
+		_set_state(State.GROUNDED)
+	_set_horizontal(_dash_dir * profile.dash_speed)
+
+
+func _spend_dash() -> void:
+	dash_charges -= 1
+	if dash_charges <= 0:
+		var slow := profile.dash_recharge
+		var fast := profile.dash_recharge_fast
+		if not dash_refill_fast:
+			if dash_recharge_left > 0.0 and slow > 0.001:
+				dash_recharge_left *= fast / slow
+			else:
+				dash_recharge_left = fast
+			dash_refill_fast = true
+	elif dash_recharge_left <= 0.0:
+		dash_refill_fast = false
+		dash_recharge_left = profile.dash_recharge
+
+
+func _dash_direction(intent: MovementIntent) -> Vector3:
+	if _aim.length_squared() > 0.01:
+		return _aim
+	var wish := _wish_direction(intent)
+	if wish.length_squared() > 0.01:
+		return wish
+	return _facing()
+
+
+func _try_dash_slide(intent: MovementIntent) -> bool:
+	if not can_crouch:
+		return false
+	if _dash_time <= 0.0 and _dash_grace <= 0.0:
+		return false
+	if not intent.crouch_slide_pressed and not intent.crouch_slide_held:
+		return false
+	if not _body.is_on_floor():
+		return false
+	if state == State.SLIDING and _coast_left > 0.0:
+		return false
+	_begin_coast_slide()
+	return true
+
+
+func _begin_coast_slide() -> void:
+	_dash_time = 0.0
+	_dash_grace = 0.0
+	_coast_left = profile.dash_slide_seconds
+	if _dash_dir.length_squared() < 0.01:
+		_dash_dir = _facing()
+	_slide_dir = _dash_dir
+	_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
+	_set_capsule(profile.height_slide)
+	_set_state(State.SLIDING)
+
+
 func _try_slide(intent: MovementIntent) -> bool:
 	if not can_crouch or _slide_cd_left > 0.0:
 		return false
@@ -423,6 +540,8 @@ func _apply_locomotion(intent: MovementIntent, dt: float, takeoff: bool) -> void
 		_body.velocity.y = minf(_body.velocity.y, -profile.floor_stick)
 	if state == State.SLIDING:
 		_apply_slide(intent, dt)
+	elif _dash_time > 0.0:
+		_set_horizontal(_dash_dir * profile.dash_speed)
 	elif state == State.AIRBORNE:
 		_apply_air(intent, dt)
 	else:
@@ -477,8 +596,12 @@ func _apply_air(intent: MovementIntent, dt: float) -> void:
 
 
 func _apply_slide(intent: MovementIntent, dt: float) -> void:
-	_slide_speed -= profile.slide_friction * dt
-	if _body.is_on_floor():
+	if _coast_left > 0.0:
+		# A dash into crouch keeps the burst. Friction starts only after that window.
+		_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
+	else:
+		_slide_speed -= profile.slide_friction * dt
+	if _coast_left <= 0.0 and _body.is_on_floor():
 		var normal := _body.get_floor_normal()
 		var slope := acos(clampf(normal.dot(Vector3.UP), -1.0, 1.0))
 		var downhill := Vector3(-normal.x, 0.0, -normal.z)
@@ -578,7 +701,9 @@ func _post_contact(intent: MovementIntent, was_air: bool, fall_vy: float) -> voi
 		_air_jumps_left = profile.air_jumps
 		if _jump_buffer_left > 0.0:
 			_jump_buffer_left = maxf(_jump_buffer_left, 0.05)
-		if can_crouch and intent.crouch_slide_held and get_horizontal_speed() >= profile.slide_enter_speed and _slide_cd_left <= 0.0:
+		if _try_dash_slide(intent):
+			pass
+		elif can_crouch and intent.crouch_slide_held and get_horizontal_speed() >= profile.slide_enter_speed and _slide_cd_left <= 0.0:
 			_begin_slide(false)
 		elif intent.crouch_slide_held or not _headroom_clear():
 			_set_capsule(profile.height_crouch)

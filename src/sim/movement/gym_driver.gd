@@ -40,7 +40,7 @@ func setup(gym_unit: GymUnit, spawn: Vector3, map: RID) -> void:
 	var help := Label.new()
 	help.position = Vector2(16, 16)
 	help.add_theme_font_size_override("font_size", 22)
-	help.text = "Right-click once: move there\nSpace: jump, double jump, vault\nSpace on a wall: wall jump\nCtrl while fast: slide\nS: stop\nY or touch a screen edge: pan the camera"
+	help.text = "Right-click once: move there\nSpace: jump, double jump, vault, grab a ledge\nShift: dash (two charges)\nCtrl after a dash: slide that keeps speed\nCtrl while fast: slide\nS: stop\nY or touch a screen edge: pan the camera"
 	layer.add_child(help)
 	_readout = Label.new()
 	_readout.position = Vector2(16, 980)
@@ -105,6 +105,7 @@ func _read_input(_dt: float) -> void:
 	_intent.jump_pressed = Input.is_action_just_pressed("jump")
 	_intent.crouch_slide_held = Input.is_action_pressed("crouch_slide")
 	_intent.crouch_slide_pressed = Input.is_action_just_pressed("crouch_slide")
+	_intent.dash_pressed = Input.is_action_just_pressed("dash")
 	_intent.stop = Input.is_action_just_pressed("stop")
 	_intent.steering = false
 	if Input.is_action_just_pressed("move_click"):

@@ -4,11 +4,10 @@ class_name ArenaBuilder extends RefCounted
 ## Floor, walls, gates and props live under Navigation so the default bake sees them.
 ## Gate doors are siblings of Navigation: the mesh is baked with the gates open.
 
-const FLOOR_ALBEDO := 0.42
-const WALL_ALBEDO := 0.28
-const STAND_ALBEDO := 0.36
+const WALL_COLOR := Color(0.46, 0.43, 0.36)
+const STAND_COLOR := Color(0.33, 0.36, 0.3)
 
-static func build(layout: ArenaLayout) -> Node3D:
+static func build(layout: ArenaLayout, include_props := true) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Arena"
 	root.set_script(load("res://src/world/arena_root.gd"))
@@ -22,11 +21,11 @@ static func build(layout: ArenaLayout) -> Node3D:
 	root.add_child(region)
 	region.add_child(_floor(layout))
 	root.add_child(_vista_ground())
-	root.add_child(_grass_skin(layout))
-	root.add_child(_ground_paths())
 	region.add_child(_walls(layout))
 	region.add_child(_gates(layout))
-	region.add_child(_props(layout))
+	# The playable match skips the grey crates. Tests still build them.
+	if include_props:
+		region.add_child(_props(layout))
 
 	root.add_child(_stands(layout))
 	var crowd := CrowdRenderer.new()
@@ -37,49 +36,6 @@ static func build(layout: ArenaLayout) -> Node3D:
 	root.add_child(_environment())
 	root.add_child(_sun())
 	return root
-
-static func _grass_skin(layout: ArenaLayout) -> MeshInstance3D:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var verts := ArenaMath.vertices(layout.apothem)
-	for index in verts.size():
-		var a := verts[index]
-		var b := verts[(index + 1) % verts.size()]
-		_tri(tool, Vector3(0, 0.03, 0), Vector3(a.x, 0.03, a.y), Vector3(b.x, 0.03, b.y), Vector3.UP)
-	var node := MeshInstance3D.new()
-	node.name = "GrassSkin"
-	node.mesh = tool.commit()
-	node.material_override = GreyMaterials.meadow_material()
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return node
-
-
-static func _ground_paths() -> Node3D:
-	var root := Node3D.new()
-	root.name = "GroundPaths"
-	_path_strip(root, -36.0, 36.0, -6.4, 6.4, Color(0.5, 0.32, 0.16), 0.055)
-	_path_strip(root, -34.0, 34.0, -1.8, 1.8, Color(0.12, 0.1, 0.09), 0.065)
-	_path_strip(root, -3.6, 3.6, -33.0, -7.0, Color(0.42, 0.26, 0.13), 0.055)
-	_path_strip(root, -3.6, 3.6, 7.0, 33.0, Color(0.42, 0.26, 0.13), 0.055)
-	_path_strip(root, -24.0, -12.0, 9.5, 13.5, Color(0.16, 0.13, 0.11), 0.055)
-	_path_strip(root, 12.0, 24.0, -13.5, -9.5, Color(0.16, 0.13, 0.11), 0.055)
-	return root
-
-
-static func _path_strip(parent: Node3D, x0: float, x1: float, z0: float, z1: float, color: Color, height: float) -> void:
-	var box := BoxMesh.new()
-	box.size = Vector3(absf(x1 - x0), 0.04, absf(z1 - z0))
-	var node := MeshInstance3D.new()
-	node.mesh = box
-	node.position = Vector3((x0 + x1) * 0.5, height, (z0 + z1) * 0.5)
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 1.0
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	node.material_override = material
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(node)
-
 
 static func _vista_ground() -> MeshInstance3D:
 	var plane := PlaneMesh.new()
@@ -126,7 +82,7 @@ static func _floor(layout: ArenaLayout) -> StaticBody3D:
 		shape_points.append(Vector3(a.x, 0.0, a.y))
 		shape_points.append(Vector3(a.x, -0.4, a.y))
 	var mesh_node := MeshInstance3D.new()
-	mesh_node.name = "MeadowFloor"
+	mesh_node.name = "Mesh"
 	var floor_mesh := tool.commit()
 	floor_mesh.surface_set_material(0, GreyMaterials.meadow_material())
 	mesh_node.mesh = floor_mesh
@@ -196,7 +152,7 @@ static func _add_wall_prism(parent: Node3D, layout: ArenaLayout, inner_a: Vector
 	body.collision_mask = 0
 	var mesh_node := MeshInstance3D.new()
 	mesh_node.mesh = tool.commit()
-	mesh_node.material_override = GreyMaterials.get_material(WALL_ALBEDO)
+	mesh_node.material_override = GreyMaterials.flat_material(WALL_COLOR)
 	body.add_child(mesh_node)
 	var shape_node := CollisionShape3D.new()
 	var shape := ConvexPolygonShape3D.new()
@@ -269,7 +225,7 @@ static func _stepped_side(parent: Node3D, layout: ArenaLayout, sign: float, z_ed
 		mesh.size = size
 		mesh_node.mesh = mesh
 		mesh_node.position = center
-		mesh_node.material_override = GreyMaterials.get_material(WALL_ALBEDO)
+		mesh_node.material_override = GreyMaterials.flat_material(WALL_COLOR)
 		body.add_child(mesh_node)
 		var shape_node := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
@@ -291,7 +247,7 @@ static func _back_wall(parent: Node3D, layout: ArenaLayout, sign: float, outer: 
 	mesh.size = size
 	mesh_node.mesh = mesh
 	mesh_node.position = center
-	mesh_node.material_override = GreyMaterials.get_material(WALL_ALBEDO)
+	mesh_node.material_override = GreyMaterials.flat_material(WALL_COLOR)
 	body.add_child(mesh_node)
 	var shape_node := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -332,7 +288,7 @@ static func _stands(layout: ArenaLayout) -> Node3D:
 	var mesh_node := MeshInstance3D.new()
 	mesh_node.name = "Mesh"
 	mesh_node.mesh = tool.commit()
-	mesh_node.material_override = GreyMaterials.get_material(STAND_ALBEDO)
+	mesh_node.material_override = GreyMaterials.flat_material(STAND_COLOR)
 	stands.add_child(mesh_node)
 	return stands
 
@@ -396,7 +352,7 @@ static func _doors(layout: ArenaLayout) -> Node3D:
 		var mesh := BoxMesh.new()
 		mesh.size = size
 		mesh_node.mesh = mesh
-		mesh_node.material_override = GreyMaterials.get_material(WALL_ALBEDO)
+		mesh_node.material_override = GreyMaterials.flat_material(WALL_COLOR)
 		body.add_child(mesh_node)
 		var shape_node := CollisionShape3D.new()
 		var shape := BoxShape3D.new()
@@ -408,13 +364,31 @@ static func _doors(layout: ArenaLayout) -> Node3D:
 	return doors
 
 static func _environment() -> WorldEnvironment:
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.36, 0.62, 0.93)
+	sky_mat.sky_horizon_color = Color(0.78, 0.88, 0.96)
+	sky_mat.sky_curve = 0.15
+	sky_mat.ground_horizon_color = Color(0.52, 0.6, 0.38)
+	sky_mat.ground_bottom_color = Color(0.3, 0.36, 0.22)
+	sky_mat.sun_angle_max = 26.0
+	sky_mat.energy_multiplier = 1.08
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
 	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.62, 0.78, 0.92)
+	environment.background_mode = Environment.BG_SKY
+	environment.sky = sky
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.55, 0.58, 0.5)
-	environment.ambient_light_energy = 0.55
+	environment.tonemap_exposure = 1.06
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	environment.ambient_light_energy = 0.82
+	environment.glow_enabled = true
+	environment.glow_intensity = 0.32
+	environment.glow_strength = 0.65
+	environment.glow_bloom = 0.1
+	environment.volumetric_fog_enabled = true
+	environment.volumetric_fog_density = 0.0022
+	environment.volumetric_fog_albedo = Color(0.82, 0.88, 0.74)
+	environment.volumetric_fog_length = 70.0
 	var world := WorldEnvironment.new()
 	world.name = "WorldEnvironment"
 	world.environment = environment
@@ -423,11 +397,13 @@ static func _environment() -> WorldEnvironment:
 static func _sun() -> DirectionalLight3D:
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-48, 35, 0)
+	sun.rotation_degrees = Vector3(-36, -28, 0)
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 70.0
-	sun.light_color = Color(1.0, 0.96, 0.88)
-	sun.light_energy = 1.15
+	sun.directional_shadow_max_distance = 110.0
+	sun.light_color = Color(1.0, 0.95, 0.82)
+	sun.light_energy = 1.4
+	sun.light_volumetric_fog_energy = 1.7
+	sun.shadow_blur = 1.1
 	return sun
 
 static func _edge_kind(a: Vector2, b: Vector2, apothem: float) -> String:

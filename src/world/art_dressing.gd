@@ -1,8 +1,8 @@
 class_name ArtDressing extends RefCounted
 
-## Dresses the ring with the stylized nature kit.
-## The east-west lane, the gates, and the centre pit stay clear so the match still plays.
-## Placements on the west side are mirrored to the east so neither team gets extra cover.
+## Forest dressing for the ring, laid out like a sunlit dirt road.
+## The east-west lane stays open. West placements are mirrored so both teams share the same cover.
+## Big rocks are solid and short enough to vault or mantle. Tree trunks block, canopies do not.
 
 const KIT := "res://art/exports/Stylized Nature MegaKit[Standard]/glTF"
 
@@ -16,70 +16,104 @@ static func attach(arena: Node3D) -> void:
 	parent.add_child(root)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
+	_road(root)
 	_landmarks(root)
+	_vista(root)
 	_scatter(root, rng)
+	var life := ForestLife.new()
+	life.name = "ForestLife"
+	root.add_child(life)
+
+
+static func _road(root: Node3D) -> void:
+	# A flat dirt ribbon, light like the reference, with kit stones scattered on it. No raised slabs.
+	var lane := MeshInstance3D.new()
+	lane.name = "Lane"
+	var plane := PlaneMesh.new()
+	plane.orientation = PlaneMesh.FACE_Y
+	plane.size = Vector2(66.0, 5.6)
+	lane.mesh = plane
+	lane.position = Vector3(0.0, 0.025, 0.0)
+	lane.material_override = GreyMaterials.lane_material()
+	lane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(lane)
 
 
 static func _landmarks(root: Node3D) -> void:
-	# name, x, z, target height. 0 keeps the mesh's own height.
 	var trees: Array = [
-		["CommonTree_1", -30.0, 22.0, 0.0],
-		["CommonTree_3", -20.0, 31.0, 0.0],
-		["CommonTree_5", -33.0, -22.0, 0.0],
-		["Pine_2", -24.0, -30.0, 0.0],
-		["Pine_5", -14.0, 28.0, 0.0],
-		["DeadTree_1", -16.0, -20.0, 8.5],
-		["TwistedTree_5", -12.0, 16.0, 11.0],
+		["Pine_1", -30.0, 14.0, 12.0],
+		["Pine_3", -22.0, 24.0, 11.0],
+		["Pine_5", -15.0, -22.0, 10.5],
+		["Pine_2", -33.0, -14.0, 12.5],
+		["CommonTree_1", -24.0, -18.0, 9.0],
+		["CommonTree_3", -16.0, 16.0, 8.6],
+		["CommonTree_5", -28.0, 6.5, 8.2],
+		["DeadTree_1", -20.0, -28.0, 6.5],
+		["TwistedTree_1", -11.0, 27.0, 7.5],
 	]
 	for entry in trees:
-		_place_scene(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), float(entry[3]), true, 0.42)
+		_place(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), float(entry[3]), true, 0.42, true)
+	# One autumn tree, like the orange canopy in the reference. Not mirrored.
+	_place(root, "CommonTree_2", Vector3(12.0, 0.0, -8.5), 9.6, true, 0.42, false, Color(0.95, 0.36, 0.08, 1.0))
+	_place(root, "TwistedTree_5", Vector3(-4.0, 0.0, 22.0), 7.8, true, 0.36, false, Color(0.93, 0.4, 0.1, 1.0))
+	# Heights stay under the 2 m mantle. Width is extra so the top is a platform you can jump onto.
 	var rocks: Array = [
-		["Rock_Medium_1", -22.0, 14.0, 0.0],
-		["Rock_Medium_3", -28.0, -12.0, 0.0],
+		["Rock_Medium_1", -6.5, -5.8, 1.95, 2.15],
+		["Rock_Medium_2", 9.0, 8.5, 1.55, 1.9],
+		["Rock_Medium_1", -16.0, 11.0, 1.85, 1.8],
+		["Rock_Medium_2", -24.0, -12.5, 1.35, 1.65],
+		["Rock_Medium_3", -10.5, -12.0, 0.9, 1.5],
+		["Rock_Medium_1", -28.0, 17.5, 1.7, 1.85],
 	]
 	for entry in rocks:
-		_place_scene(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), float(entry[3]), true, 0.0)
-	var bushes: Array = [
-		["Bush_Common", -27.0, 18.0],
-		["Bush_Common_Flowers", -18.0, 26.0],
-		["Bush_Common", -29.0, -26.0],
-		["Fern_1", -14.0, 20.0],
-		["Flower_4_Group", -26.0, 26.0],
-		["Flower_3_Group", -20.0, -24.0],
-		["Mushroom_Laetiporus", -32.0, 16.0],
+		_place(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), float(entry[3]), true, 0.0, true, Color(0, 0, 0, 0), 0.82, float(entry[4]))
+	var plants: Array = [
+		["Bush_Common", -20.0, 8.0],
+		["Bush_Common_Flowers", -12.0, 14.0],
+		["Bush_Common", -26.0, -8.0],
+		["Fern_1", -8.0, 7.5],
+		["Fern_1", -22.0, -7.2],
+		["Flower_4_Group", -11.0, -7.0],
+		["Flower_3_Group", -19.0, 7.2],
+		["Mushroom_Laetiporus", -29.0, 10.0],
+		["Mushroom_Common", -6.5, 4.2],
+		["Flower_4_Group", -14.0, 4.6],
+		["Flower_3_Group", 0.0, -4.8],
+		["Fern_1", -18.0, -4.4],
+		["Plant_1_Big", -31.0, -22.0],
 	]
-	for entry in bushes:
-		_place_scene(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), 0.0, false, 0.0)
+	for entry in plants:
+		_place(root, str(entry[0]), Vector3(float(entry[1]), 0.0, float(entry[2])), 0.0, false, 0.0, true)
+
+
+static func _vista(root: Node3D) -> void:
+	var names: Array[String] = ["Pine_4", "CommonTree_4", "Pine_1", "CommonTree_1", "Pine_5", "TwistedTree_2"]
+	for index in 18:
+		var angle := TAU * float(index) / 18.0
+		var radius := 44.0 + float(index % 3) * 2.2
+		var spot := Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		if absf(spot.x) > 34.0 and absf(spot.z) < 12.0:
+			continue
+		_place(root, names[index % names.size()], spot, 15.0, false, 0.0, false)
 
 
 static func _scatter(root: Node3D, rng: RandomNumberGenerator) -> void:
-	_field(root, rng, "Grass_Common_Short", 170, 0.0, 1.0, 0.8, true)
-	_field(root, rng, "Grass_Wispy_Short", 90, 0.0, 1.0, 0.7, true)
-	_field(root, rng, "Plant_7", 40, 0.0, 1.0, 1.0, true)
-	_field(root, rng, "Clover_2", 28, 0.0, 1.0, 0.65, true)
-	_field(root, rng, "Grass_Common_Short", 90, 11.0, 34.0, 0.9)
-	_field(root, rng, "Grass_Wispy_Short", 50, 12.0, 33.0, 0.85)
-	_field(root, rng, "Grass_Common_Tall", 28, 16.0, 32.0, 0.8)
-	_field(root, rng, "Clover_1", 36, 12.0, 30.0, 0.75)
-	_field(root, rng, "Plant_1", 24, 14.0, 31.0, 0.9)
-	_field(root, rng, "Plant_7", 30, 13.0, 32.0, 1.0)
-	_field(root, rng, "Fern_1", 16, 18.0, 33.0, 0.85)
-	_field(root, rng, "Pebble_Round_1", 22, 12.0, 34.0, 3.2)
-	_field(root, rng, "Pebble_Round_4", 18, 14.0, 33.0, 3.0)
-	_field(root, rng, "Petal_2", 20, 11.0, 28.0, 1.3)
-	_field(root, rng, "Mushroom_Common", 14, 15.0, 31.0, 1.0)
-	_field(root, rng, "Flower_3_Single", 12, 16.0, 30.0, 0.7)
-	_paths(root)
+	_field(root, rng, "Grass_Common_Short", 220, 1.2, "grass")
+	_field(root, rng, "Grass_Wispy_Short", 120, 1.1, "grass")
+	_field(root, rng, "Grass_Common_Tall", 40, 1.05, "edge")
+	_field(root, rng, "Clover_1", 48, 0.95, "grass")
+	_field(root, rng, "Plant_1", 32, 1.05, "grass")
+	_field(root, rng, "Plant_7", 36, 1.08, "grass")
+	_field(root, rng, "Fern_1", 28, 1.0, "edge")
+	_field(root, rng, "Flower_3_Single", 26, 0.9, "edge")
+	_field(root, rng, "Flower_4_Single", 18, 0.9, "edge")
+	_field(root, rng, "Mushroom_Common", 20, 1.05, "edge")
+	_field(root, rng, "Pebble_Round_1", 22, 0.5, "road")
+	_field(root, rng, "Pebble_Round_4", 14, 0.4, "road")
+	_field(root, rng, "Petal_2", 22, 1.05, "edge")
 
 
-static func _paths(root: Node3D) -> void:
-	var along := [-18.0, -6.0]
-	for x in along:
-		_place_scene(root, "RockPath_Round_Wide", Vector3(x, 0.0, 18.0), 0.0, false, 0.0)
-		_place_scene(root, "RockPath_Round_Thin", Vector3(x, 0.0, -18.0), 0.0, false, 0.0)
-
-
-static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, count: int, inner: float, outer: float, scale: float, cover_floor := false) -> void:
+static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, count: int, scale: float, kind: String) -> void:
 	var info := _mesh_info(file_name)
 	if info.is_empty():
 		return
@@ -98,23 +132,26 @@ static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, 
 	root.add_child(view)
 	var placed := 0
 	var guard := 0
-	while placed < count and guard < count * 30:
+	while placed < count and guard < count * 40:
 		guard += 1
-		var spot := _square(rng) if cover_floor else _point(rng, inner, outer)
-		if cover_floor:
-			if not _on_grass(spot):
-				continue
-		elif _blocked(spot):
+		var spot := _square(rng)
+		if not _accepts(spot, kind):
 			continue
 		var yaw := rng.randf() * TAU
-		var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale)
-		multi.set_instance_transform(placed, Transform3D(basis, Vector3(spot.x, -min_y * scale, spot.z)))
+		var size := scale * rng.randf_range(0.85, 1.15)
+		var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * size)
+		multi.set_instance_transform(placed, Transform3D(basis, Vector3(spot.x, -min_y * size, spot.z)))
 		placed += 1
 	multi.visible_instance_count = placed
 
 
-static func _place_scene(root: Node3D, file_name: String, spot: Vector3, target_height: float, solid: bool, trunk: float) -> void:
-	for side in _sides(spot):
+static func _place(root: Node3D, file_name: String, spot: Vector3, target_height: float, solid: bool, trunk: float, mirror := true, leaf := Color(0, 0, 0, 0), bulk := 0.62, wide := 1.0) -> void:
+	var spots: Array[Vector3] = []
+	if mirror:
+		spots = _sides(spot)
+	else:
+		spots.append(spot)
+	for side in spots:
 		var node := _instance(file_name)
 		if node == null:
 			return
@@ -122,16 +159,18 @@ static func _place_scene(root: Node3D, file_name: String, spot: Vector3, target_
 		var scale := 1.0
 		if target_height > 0.1 and box.size.y > 0.001:
 			scale = target_height / box.size.y
-		node.scale = Vector3.ONE * scale
+		node.scale = Vector3(scale * wide, scale, scale * wide)
 		node.position = Vector3(side.x, -box.position.y * scale, side.z)
-		node.rotation.y = side.x * 0.15 + side.z * 0.05
+		node.rotation.y = fmod(side.x * 0.37 + side.z * 0.21, TAU)
+		if leaf.a > 0.5:
+			_tint_leaves(node, leaf)
 		_shadows(node, solid)
 		root.add_child(node)
 		if solid:
-			_collider(root, node.position, box, scale, trunk)
+			_collider(root, node.position, box, scale, trunk, bulk, wide)
 
 
-static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk: float) -> void:
+static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk: float, bulk: float, wide: float) -> void:
 	var body := StaticBody3D.new()
 	body.collision_layer = GameConfig.LAYER_PROPS
 	body.collision_mask = 0
@@ -140,16 +179,40 @@ static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk:
 	if trunk > 0.0:
 		var shape := CylinderShape3D.new()
 		shape.radius = trunk
-		shape.height = 2.2
+		shape.height = 2.25
 		shape_node.shape = shape
-		shape_node.position = Vector3(0.0, 1.1, 0.0)
+		shape_node.position = Vector3(0.0, 1.12, 0.0)
 	else:
 		var shape := BoxShape3D.new()
-		shape.size = Vector3(box.size.x * scale * 0.62, box.size.y * scale * 0.75, box.size.z * scale * 0.62)
+		var height := box.size.y * scale * 0.9
+		shape.size = Vector3(maxf(box.size.x * scale * wide * bulk, 0.9), height, maxf(box.size.z * scale * wide * bulk, 0.9))
 		shape_node.shape = shape
 		shape_node.position = Vector3(0.0, shape.size.y * 0.5, 0.0)
 	body.add_child(shape_node)
 	root.add_child(body)
+
+
+static func _tint_leaves(node: Node, color: Color) -> void:
+	if node is MeshInstance3D:
+		var mesh_node := node as MeshInstance3D
+		var mesh := mesh_node.mesh
+		if mesh != null:
+			for surface in mesh.get_surface_count():
+				var mat := mesh_node.get_active_material(surface)
+				if mat == null or not mat is StandardMaterial3D:
+					continue
+				var mat_name := mat.resource_name.to_lower()
+				if mat_name.is_empty():
+					mat_name = str(mat.resource_path).to_lower()
+				if not mat_name.contains("leaf"):
+					continue
+				var copy := (mat as StandardMaterial3D).duplicate() as StandardMaterial3D
+				copy.albedo_texture = null
+				copy.albedo_color = color
+				copy.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				mesh_node.set_surface_override_material(surface, copy)
+	for child in node.get_children():
+		_tint_leaves(child, color)
 
 
 static func _shadows(node: Node, cast: bool) -> void:
@@ -170,30 +233,19 @@ static func _square(rng: RandomNumberGenerator) -> Vector3:
 	return Vector3(rng.randf_range(-36.0, 36.0), 0.0, rng.randf_range(-36.0, 36.0))
 
 
-static func _on_grass(spot: Vector3) -> bool:
-	if not ArenaMath.contains(Vector2(spot.x, spot.z), 37.0):
+static func _accepts(spot: Vector3, kind: String) -> bool:
+	if not ArenaMath.contains(Vector2(spot.x, spot.z), 36.2):
 		return false
-	if absf(spot.x) > 34.0 and absf(spot.z) < 4.5:
+	if absf(spot.x) > 33.0 and absf(spot.z) < 5.5:
 		return false
+	var on_road := absf(spot.z) < 2.5 and absf(spot.x) < 33.0
+	if kind == "road":
+		return on_road
+	if on_road:
+		return false
+	if kind == "edge":
+		return absf(spot.z) < 14.0 or absf(spot.x) > 18.0
 	return true
-
-
-static func _point(rng: RandomNumberGenerator, inner: float, outer: float) -> Vector3:
-	var radius := rng.randf_range(inner, outer)
-	var angle := rng.randf() * TAU
-	return Vector3(sin(angle) * radius, 0.0, cos(angle) * radius)
-
-
-static func _blocked(spot: Vector3) -> bool:
-	if not ArenaMath.contains(Vector2(spot.x, spot.z), 36.0):
-		return true
-	if absf(spot.z) < 5.5:
-		return true
-	if spot.length() < 8.0:
-		return true
-	if absf(spot.x) > 30.0 and absf(spot.z) < 9.0:
-		return true
-	return false
 
 
 static func _instance(file_name: String) -> Node3D:

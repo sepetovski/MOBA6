@@ -69,6 +69,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_released(&"crouch_slide"):
 		_on_crouch_release()
 		_mark_handled()
+	elif event.is_action_pressed(&"dash"):
+		_emit(Command.Kind.DASH, _ground_or_zero(), true)
+		_mark_handled()
 	elif event.is_action_pressed(&"ability_1"):
 		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 0)
 		_mark_handled()

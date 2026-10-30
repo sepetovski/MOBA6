@@ -27,4 +27,5 @@ func _ready() -> void:
 		push_error("navigation bake timed out")
 	await get_tree().physics_frame
 	await get_tree().physics_frame
+	set_meta("navigation_ready", true)
 	navigation_ready.emit()

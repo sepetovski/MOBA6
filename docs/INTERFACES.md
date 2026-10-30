@@ -21,7 +21,7 @@ Binding type names. Do not rename one without an entry in `docs/DECISIONS.md`. O
 | `UnitView` | A4 | planned (M4) |
 | `ArenaLayout` | A1 | defined in M1 (`data/arena_layout.gd`) |
 | `PropPlacement` | A1 | defined in M1 (`data/prop_placement.gd`) |
-| `ArenaBuilder` | A1 | defined in M1. `static func build(layout) -> Node3D`. Floor, walls, gates and props are children of `Navigation`. Gate doors are siblings of it |
+| `ArenaBuilder` | A1 | defined in M1. `static func build(layout, include_props := true) -> Node3D`. Floor, walls, gates and props are children of `Navigation`. Gate doors are siblings of it. The match passes `include_props = false` |
 | `ArenaInfo` | A1 | defined in M1. `get_spawn_slot(team, slot) -> Transform3D`, `get_bounds() -> AABB`, `get_octagon_polygon() -> PackedVector2Array`, `contains_xz(point) -> bool` |
 | `TraversalClass` | A1 | defined in M1. `from_height(height) -> Kind`. Constants match the M3 movement defaults (0.4 / 1.2 / 2.0) |
 | `CrowdRenderer` | A1 | defined in M1. `set_density(0..1)`, `set_excitement(0..1)` |
@@ -37,7 +37,7 @@ Binding type names. Do not rename one without an entry in `docs/DECISIONS.md`. O
 
 `MovementProfile` is the resource in `docs/PLAN.md` §5 plus the fields in `docs/briefs/M3-movement.md`. Do not rename or remove one. Extra fields live in the same export groups (`floor_snap_length`, `floor_stick`, `floor_max_angle_deg`, probe heights, `vault_align_deg`, `vault_landing_reach`, `vault_top_inset`, `step_face_normal_y`, `blocked_speed_fraction`, `slide_tilt_deg`, `rise_stretch`).
 
-`MovementIntent` keeps `has_move_target`, `steering` and the `*_held` flags until something changes them. `stop`, `jump_pressed` and `crouch_slide_pressed` are edge flags. The owner clears those after each `step()`. The motor may set `has_move_target = false` when the goal is reached, dropped, or replaced by steering.
+`MovementIntent` keeps `has_move_target`, `steering` and the `*_held` flags until something changes them. `stop`, `jump_pressed`, `crouch_slide_pressed` and `dash_pressed` are edge flags. The owner clears those after each `step()`. The motor may set `has_move_target = false` when the goal is reached, dropped, or replaced by steering.
 
 ```gdscript
 class_name MovementIntent extends RefCounted
@@ -103,6 +103,7 @@ func clear() -> void
 | `JUMP`, released | `jump_held` = false |
 | `CROUCH_SLIDE`, pressed | `crouch_slide_pressed` = true for that tick, `crouch_slide_held` = true until released |
 | `CROUCH_SLIDE`, released | `crouch_slide_held` = false |
+| `DASH`, pressed | `dash_pressed` = true for that tick. Shift. Two charges live on `MovementMotor` |
 
 ## Camera and input (M2)
 
@@ -117,6 +118,8 @@ func set_locked(locked: bool) -> void
 func is_locked() -> bool
 func set_bounds(bounds: AABB) -> void
 func focus_on(world_point: Vector3, instant := false) -> void
+func present(point: Vector3, distance: float, instant := false) -> void
+func set_presenting(on: bool) -> void
 func screen_to_ground(screen_pos: Vector2) -> Variant
 
 class_name CursorPicker extends RefCounted
