@@ -173,6 +173,11 @@ debug_damage={
 3d_physics/layer_7="NavBlock"
 3d_physics/layer_8="Occluders"
 
+[rendering]
+
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=1
+
 [navigation]
 
 3d/default_cell_size=0.2

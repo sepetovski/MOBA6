@@ -21,6 +21,8 @@ static func build(layout: ArenaLayout) -> Node3D:
 	var region := _navigation_region()
 	root.add_child(region)
 	region.add_child(_floor(layout))
+	root.add_child(_vista_ground())
+	root.add_child(_grass_skin(layout))
 	region.add_child(_walls(layout))
 	region.add_child(_gates(layout))
 	region.add_child(_props(layout))
@@ -34,6 +36,35 @@ static func build(layout: ArenaLayout) -> Node3D:
 	root.add_child(_environment())
 	root.add_child(_sun())
 	return root
+
+static func _grass_skin(layout: ArenaLayout) -> MeshInstance3D:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var verts := ArenaMath.vertices(layout.apothem)
+	for index in verts.size():
+		var a := verts[index]
+		var b := verts[(index + 1) % verts.size()]
+		_tri(tool, Vector3(0, 0.03, 0), Vector3(a.x, 0.03, a.y), Vector3(b.x, 0.03, b.y), Vector3.UP)
+	var node := MeshInstance3D.new()
+	node.name = "GrassSkin"
+	node.mesh = tool.commit()
+	node.material_override = GreyMaterials.meadow_material()
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return node
+
+
+static func _vista_ground() -> MeshInstance3D:
+	var plane := PlaneMesh.new()
+	plane.orientation = PlaneMesh.FACE_Y
+	plane.size = Vector2(240.0, 240.0)
+	var node := MeshInstance3D.new()
+	node.name = "VistaGround"
+	node.mesh = plane
+	node.position = Vector3(0.0, -0.05, 0.0)
+	node.material_override = GreyMaterials.meadow_material()
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return node
+
 
 static func _navigation_region() -> NavigationRegion3D:
 	var region := NavigationRegion3D.new()
@@ -366,7 +397,7 @@ static func _sun() -> DirectionalLight3D:
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-48, 35, 0)
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 120.0
+	sun.directional_shadow_max_distance = 70.0
 	sun.light_color = Color(1.0, 0.96, 0.88)
 	sun.light_energy = 1.15
 	return sun

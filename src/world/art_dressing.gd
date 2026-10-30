@@ -53,6 +53,10 @@ static func _landmarks(root: Node3D) -> void:
 
 
 static func _scatter(root: Node3D, rng: RandomNumberGenerator) -> void:
+	_field(root, rng, "Grass_Common_Short", 170, 0.0, 1.0, 0.8, true)
+	_field(root, rng, "Grass_Wispy_Short", 90, 0.0, 1.0, 0.7, true)
+	_field(root, rng, "Plant_7", 40, 0.0, 1.0, 1.0, true)
+	_field(root, rng, "Clover_2", 28, 0.0, 1.0, 0.65, true)
 	_field(root, rng, "Grass_Common_Short", 90, 11.0, 34.0, 0.9)
 	_field(root, rng, "Grass_Wispy_Short", 50, 12.0, 33.0, 0.85)
 	_field(root, rng, "Grass_Common_Tall", 28, 16.0, 32.0, 0.8)
@@ -75,7 +79,7 @@ static func _paths(root: Node3D) -> void:
 		_place_scene(root, "RockPath_Round_Thin", Vector3(x, 0.0, -18.0), 0.0, false, 0.0)
 
 
-static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, count: int, inner: float, outer: float, scale: float) -> void:
+static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, count: int, inner: float, outer: float, scale: float, cover_floor := false) -> void:
 	var info := _mesh_info(file_name)
 	if info.is_empty():
 		return
@@ -96,8 +100,11 @@ static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, 
 	var guard := 0
 	while placed < count and guard < count * 30:
 		guard += 1
-		var spot := _point(rng, inner, outer)
-		if _blocked(spot):
+		var spot := _square(rng) if cover_floor else _point(rng, inner, outer)
+		if cover_floor:
+			if not _on_grass(spot):
+				continue
+		elif _blocked(spot):
 			continue
 		var yaw := rng.randf() * TAU
 		var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * scale)
@@ -157,6 +164,18 @@ static func _sides(spot: Vector3) -> Array[Vector3]:
 	if absf(spot.x) > 1.5:
 		spots.append(Vector3(-spot.x, spot.y, spot.z))
 	return spots
+
+
+static func _square(rng: RandomNumberGenerator) -> Vector3:
+	return Vector3(rng.randf_range(-36.0, 36.0), 0.0, rng.randf_range(-36.0, 36.0))
+
+
+static func _on_grass(spot: Vector3) -> bool:
+	if not ArenaMath.contains(Vector2(spot.x, spot.z), 37.0):
+		return false
+	if absf(spot.x) > 34.0 and absf(spot.z) < 4.5:
+		return false
+	return true
 
 
 static func _point(rng: RandomNumberGenerator, inner: float, outer: float) -> Vector3:

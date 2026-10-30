@@ -278,13 +278,16 @@ func _set_match_state(next: int) -> void:
 
 
 func _random_character() -> String:
-	var directory := DirAccess.open("res://art/exports/characters")
+	var folder := "res://art/exports/runtime/characters"
+	if DirAccess.open(folder) == null:
+		folder = "res://art/exports/characters"
+	var directory := DirAccess.open(folder)
 	if directory == null:
 		return ""
 	var paths: PackedStringArray = []
 	for file_name in directory.get_files():
 		if file_name.ends_with(".glb"):
-			paths.append("res://art/exports/characters/%s" % file_name)
+			paths.append("%s/%s" % [folder, file_name])
 	if paths.is_empty():
 		return ""
 	paths.sort()

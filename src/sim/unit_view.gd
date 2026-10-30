@@ -40,7 +40,15 @@ func _attach_character(path: String) -> bool:
 	model.position = Vector3(0.0, -box.position.y * scale, 0.0)
 	root.add_child(model)
 	add_child(root)
+	_skip_mesh_shadows(model)
 	return true
+
+
+func _skip_mesh_shadows(node: Node) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for child in node.get_children():
+		_skip_mesh_shadows(child)
 
 
 func play_swing() -> void:
