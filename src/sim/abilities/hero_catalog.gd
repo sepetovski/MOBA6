@@ -8,6 +8,63 @@ static func for_slot(slot: int) -> HeroDefinition:
 	return roster[index]
 
 
+static func by_id(id: StringName) -> HeroDefinition:
+	for hero in [gladiator(), slinger(), skirmisher()]:
+		if hero.id == id:
+			return hero
+	return null
+
+
+static func resolve(slot: int, human: bool, hero_id: String) -> HeroDefinition:
+	if human and not hero_id.is_empty():
+		var picked := by_id(StringName(hero_id))
+		if picked != null:
+			return picked
+	return for_slot(slot)
+
+
+static func role_name(hero: HeroDefinition) -> String:
+	if hero != null and hero.stats != null and hero.stats.attack == UnitStats.Attack.RANGED:
+		return "ranged"
+	return "melee"
+
+
+static func ids_for_role(role: String) -> Array[String]:
+	var ids: Array[String] = []
+	for hero in [gladiator(), skirmisher(), slinger()]:
+		if role_name(hero) == role:
+			ids.append(String(hero.id))
+	return ids
+
+
+static func blurb(id: String) -> String:
+	match id:
+		"gladiator":
+			return "Melee. Dash Strike and Cleave."
+		"skirmisher":
+			return "Melee. Lunge and Whirl."
+		"slinger":
+			return "Ranged. Bomb and Backstep."
+	return ""
+
+
+static func model_for(id: StringName) -> String:
+	var file_name := ""
+	match String(id):
+		"gladiator":
+			file_name = "knight_C.glb"
+		"skirmisher":
+			file_name = "elf_C.glb"
+		"slinger":
+			file_name = "mage_C.glb"
+		_:
+			return ""
+	var path := "res://art/exports/runtime/characters/%s" % file_name
+	if ResourceLoader.exists(path):
+		return path
+	return ""
+
+
 static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
 	hero.stats.attack = UnitStats.Attack.MELEE

@@ -80,11 +80,20 @@ func spawn_unit(hero: HeroDefinition, team: int, slot: int, controller: int) -> 
 	_next_id += 1
 	var unit := SimUnit.new()
 	unit.name = "Unit%d" % id
-	unit.set_meta("character_model", _random_character())
+	var model := _random_character()
+	if controller == UnitState.Controller.HUMAN:
+		var pinned := HeroCatalog.model_for(hero.id)
+		if not pinned.is_empty():
+			model = pinned
+	unit.set_meta("character_model", model)
 	add_child(unit)
 	var nav_map := _arena.get_world_3d().navigation_map
 	unit.setup(id, hero, team, slot, nav_map)
 	unit.state.controller = controller as UnitState.Controller
+	if controller == UnitState.Controller.HUMAN and _config != null:
+		var called := _config.human_name.strip_edges()
+		if not called.is_empty():
+			unit.state.display_name = called
 	unit.place_at(_info.get_spawn_slot(team, slot))
 	_units[id] = unit
 	_order.append(id)
@@ -312,12 +321,14 @@ func _spawn_roster() -> void:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.A and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.A, slot, controller)
+		var west_hero := HeroCatalog.resolve(slot, controller == UnitState.Controller.HUMAN, _config.human_hero_id)
+		spawn_unit(west_hero, Team.Id.A, slot, controller)
 	for slot in 6:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.B and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.B, slot, controller)
+		var east_hero := HeroCatalog.resolve(slot, controller == UnitState.Controller.HUMAN, _config.human_hero_id)
+		spawn_unit(east_hero, Team.Id.B, slot, controller)
 
 
 func deal_damage(source_id: int, target_id: int, amount: float) -> void:
