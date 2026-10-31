@@ -60,6 +60,8 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Dash recharge, both spent | s | 1.15 | `data/movement_profile.gd` | Per charge once both are empty. Faster than two slow charges |
 | Dash slide grace | s | 0.34 | `data/movement_profile.gd` | After the burst, Ctrl still starts the fast slide |
 | Dash slide hold | s | 0.9 | `data/movement_profile.gd` | That slide keeps dash speed, then normal friction |
+| Profile name length | characters | 16 | `src/profile/player_profile.gd` | Display name on the human unit |
+| Profile history | matches | 20 | `src/profile/player_profile.gd` | Newest first. Career totals still count every match |
 | Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
 | Hero air control |  | 0.68 | `data/movement_profiles/gladiator.tres` | Steerable jumps |
 | Hero vault / mantle time | s | 0.26 / 0.4 | `data/movement_profiles/gladiator.tres` | Quicker grab onto rocks |

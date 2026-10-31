@@ -16,6 +16,7 @@ var _player: PlayerController
 var _hud: DebugHud
 var _booting := false
 var _wired := false
+var _profile_saved := false
 
 
 func _ready() -> void:
@@ -54,6 +55,9 @@ func _on_play() -> void:
 		return
 	var config := (load(MATCH) as MatchConfig).duplicate(true) as MatchConfig
 	config.countdown_seconds = 3.0
+	var profile := ProfileStore.current()
+	config.human_hero_id = profile.hero_id
+	config.human_name = profile.player_name
 	var bots := load(BOTS) as BotConfig
 	_simulation = Simulation.new()
 	_simulation.name = "Simulation"
@@ -121,6 +125,9 @@ func _on_match_state(state: int) -> void:
 			_player.enabled = false
 		if _hud != null:
 			_hud.show_chrome = false
+		if not _profile_saved:
+			_profile_saved = true
+			ProfileStore.record_match(_simulation)
 		_flow.show_results(_simulation)
 
 

@@ -141,6 +141,26 @@ func attach_to(unit: Node3D) -> void
 func place_at(point: Vector3, normal := Vector3.UP) -> void
 ```
 
+## Profile
+
+`PlayerProfile` is the local career. `ProfileStore` reads and writes `user://profile.json`. Match end calls `ProfileStore.record_match(sim)` once. The human's hero and name are copied onto `MatchConfig.human_hero_id` and `human_name` before `prepare_match`. Empty hero id keeps `HeroCatalog.for_slot`.
+
+```gdscript
+class_name PlayerProfile extends RefCounted
+var player_name: String
+var hero_id: String
+var role: String
+func set_name(raw: String) -> void
+func set_role(next: String) -> void
+func set_hero(id: String) -> void
+func add_match(entry: Dictionary) -> void
+
+class_name ProfileStore extends RefCounted
+static func current() -> PlayerProfile
+static func save() -> void
+static func record_match(sim: Simulation) -> void
+```
+
 ## Match (M4)
 
 `Simulation` ticks at physics priority 0. Controllers use priority -10 and only call `submit_command`. `dt` is `1 / GameConfig.TICK_RATE`. Before `RUNNING`, every command except `STOP` is dropped.
