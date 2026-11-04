@@ -19,8 +19,7 @@ var _wired := false
 
 
 func _ready() -> void:
-	var layout := load(LAYOUT) as ArenaLayout
-	# Grey crates stay in the layout for tests. The match itself is the forest and the rocks.
+	var layout := MatchMap.prepare(load(LAYOUT) as ArenaLayout)
 	_arena = ArenaBuilder.build(layout, false)
 	add_child(_arena)
 	ArtDressing.attach(_arena)
@@ -30,9 +29,10 @@ func _ready() -> void:
 	add_child(_camera)
 	var info := _arena.get_node("ArenaInfo") as ArenaInfo
 	_camera.set_bounds(info.get_bounds().grow(28.0))
-	_camera.present(Vector3(0.0, 0.0, 6.0), 40.0, true)
+	_camera.present(Vector3(0.0, 0.0, 6.0), 48.0, true)
 	_flow = MatchFlow.new()
 	_flow.name = "MatchFlow"
+	_flow.set_arena_span(info.get_apothem())
 	add_child(_flow)
 	_flow.open_menu(_camera)
 	_flow.play_requested.connect(_on_play)

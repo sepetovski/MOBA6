@@ -11,9 +11,11 @@ static func for_slot(slot: int) -> HeroDefinition:
 static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 18.0
-	hero.stats.attack_range = 4.2
-	hero.stats.attack_interval = 0.8
+	hero.stats.attack_damage = 16.0
+	hero.stats.attack_range = 3.4
+	hero.stats.attack_interval = 0.48
+	hero.stats.magazine = 8
+	hero.stats.reload_seconds = 1.7
 	hero.abilities = [
 		_slash(&"dash_strike", "Dash Strike", 24.0, 2.4, 6.5, 0.2, 6.0),
 		_kind(&"cleave", "Cleave", AbilityDefinition.Kind.SLASH, 16.0, 2.6, 4.0),
@@ -24,10 +26,12 @@ static func gladiator() -> HeroDefinition:
 static func slinger() -> HeroDefinition:
 	var hero := _base(&"slinger", "Slinger")
 	hero.stats.attack = UnitStats.Attack.RANGED
-	hero.stats.attack_damage = 12.0
-	hero.stats.attack_range = 13.0
-	hero.stats.attack_interval = 0.95
-	hero.stats.projectile_speed = 20.0
+	hero.stats.attack_damage = 7.0
+	hero.stats.attack_range = 16.0
+	hero.stats.attack_interval = 0.22
+	hero.stats.projectile_speed = 26.0
+	hero.stats.magazine = 18
+	hero.stats.reload_seconds = 1.35
 	hero.abilities = [
 		_bomb(),
 		_dash_only(&"backstep", "Backstep", 5.0, 0.16, 5.0, true),
@@ -38,9 +42,11 @@ static func slinger() -> HeroDefinition:
 static func skirmisher() -> HeroDefinition:
 	var hero := _base(&"skirmisher", "Skirmisher")
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 11.0
-	hero.stats.attack_range = 3.8
-	hero.stats.attack_interval = 0.55
+	hero.stats.attack_damage = 12.0
+	hero.stats.attack_range = 3.2
+	hero.stats.attack_interval = 0.4
+	hero.stats.magazine = 10
+	hero.stats.reload_seconds = 1.45
 	hero.abilities = [
 		_slash(&"lunge", "Lunge", 14.0, 1.6, 7.0, 0.18, 5.0),
 		_kind(&"whirl", "Whirl", AbilityDefinition.Kind.WHIRL, 14.0, 2.6, 6.0),

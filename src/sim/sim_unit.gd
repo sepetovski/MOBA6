@@ -86,6 +86,11 @@ func apply_command(cmd: Command) -> void:
 		Command.Kind.DASH:
 			if cmd.pressed:
 				intent.dash_pressed = true
+		Command.Kind.FIRE:
+			aim_point = cmd.point
+			_face_aim(cmd.point)
+			if combat != null:
+				combat.set_trigger(cmd.pressed)
 
 
 func sim_step(dt: float, sim: Simulation) -> void:

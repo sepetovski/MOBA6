@@ -10,3 +10,5 @@ enum Attack { MELEE, RANGED }
 @export var attack_range := 2.4 # m
 @export var attack_interval := 0.85 # s between swings
 @export var projectile_speed := 18.0 # m/s, ranged only
+@export var magazine := 8 # swings or shots before a reload
+@export var reload_seconds := 1.6 # s to fill the magazine again

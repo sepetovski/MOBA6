@@ -573,9 +573,7 @@ func _keep_inside() -> void:
 		if not unit.state.alive:
 			continue
 		var point := unit.global_position
-		var in_tunnel := absf(point.z) <= 4.2 and absf(point.x) >= 38.0 and absf(point.x) <= 49.2
-		var inside := in_tunnel or _info.contains_xz(Vector2(point.x, point.z))
-		if inside and point.y > -1.0 and point.y < 8.0:
+		if _info.allows(point):
 			continue
 		unit.place_at(unit.spawn_transform)
 		unit.motor.reset_motion()

@@ -53,14 +53,18 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Height stand / crouch / slide | m | 1.8 / 1.1 / 0.8 | `data/movement_profile.gd` | |
 | Slide tilt | deg | 25 | `data/movement_profile.gd` | Placeholder view |
 | Rise stretch |  | 1.1 | `data/movement_profile.gd` | Placeholder view while rising |
-| Dash speed | m/s | 11, hero 13.5 | `data/movement_profile.gd` | Shift burst. Hero cap is 16 so the burst is not clipped |
+| Dash speed | m/s | 11, hero 12.5 | `data/movement_profile.gd` | Shift burst. Run is 4.5, so the dash is the fast move. Cap stays 16 |
 | Dash duration | s | 0.18 | `data/movement_profile.gd` | How long the burst holds its speed |
 | Dash charges |  | 2 | `data/movement_profile.gd` | Shift spends one |
-| Dash recharge | s | 2.6 | `data/movement_profile.gd` | Restore one charge while the other is ready |
-| Dash recharge, both spent | s | 1.15 | `data/movement_profile.gd` | Per charge once both are empty. Faster than two slow charges |
-| Dash slide grace | s | 0.34 | `data/movement_profile.gd` | After the burst, Ctrl still starts the fast slide |
-| Dash slide hold | s | 0.9 | `data/movement_profile.gd` | That slide keeps dash speed, then normal friction |
+| Dash recharge | s | 2.6, hero 4.6 | `data/movement_profile.gd` | Restore one charge while the other is ready. The hero waits longer so the dash stays special |
+| Dash recharge, both spent | s | 1.15, hero 2.5 | `data/movement_profile.gd` | Per charge once both are empty. Still faster than two slow charges |
+| Dash slide grace | s | 0.34, hero 0.28 | `data/movement_profile.gd` | After the burst, Ctrl still starts the slide |
+| Dash slide hold | s | 0.9, hero 0.36 | `data/movement_profile.gd` | Longest dash-slide. A slower entry is shorter. The slide holds `dash_slide_keep` of dash speed, not the full burst |
+| Dash slide keep |  | 0.55 | `data/movement_profile.gd` | Fraction of dash speed the slide may hold. It never speeds you up |
+| Hero run speed | m/s | 4.5 | `data/movement_profiles/gladiator.tres` | Slower than the 6 m/s default so the dash reads as the fast move. Tests still use 6 |
 | Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
+| Melee magazine | swings | 8 and 10 | `src/sim/abilities/hero_catalog.gd` | Gladiator 8, Skirmisher 10. Reload 1.7 s and 1.45 s |
+| Ranged magazine | shots | 18 | `src/sim/abilities/hero_catalog.gd` | Slinger. Faster interval 0.22 s, 7 damage, reload 1.35 s |
 | Hero air control |  | 0.68 | `data/movement_profiles/gladiator.tres` | Steerable jumps |
 | Hero vault / mantle time | s | 0.26 / 0.4 | `data/movement_profiles/gladiator.tres` | Quicker grab onto rocks |
 | Hero vault reach | m | 1.65 | `data/movement_profiles/gladiator.tres` | Easier to catch a ledge |

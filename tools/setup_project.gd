@@ -6,6 +6,7 @@ extends SceneTree
 const ACTIONS := {
 	"move_click": "mouse_right",
 	"select": "mouse_left",
+	"fire": "mouse_left",
 	"jump": KEY_SPACE,
 	"crouch_slide": KEY_CTRL,
 	"dash": KEY_SHIFT,

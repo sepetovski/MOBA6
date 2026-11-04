@@ -455,11 +455,14 @@ func _try_dash_slide(intent: MovementIntent) -> bool:
 func _begin_coast_slide() -> void:
 	_dash_time = 0.0
 	_dash_grace = 0.0
-	_coast_left = profile.dash_slide_seconds
+	var entry := get_horizontal_speed()
+	var held := minf(entry, profile.dash_speed * profile.dash_slide_keep)
+	_slide_speed = maxf(held, profile.slide_min_speed)
+	var ratio := clampf(entry / maxf(profile.dash_speed, 0.01), 0.4, 1.0)
+	_coast_left = profile.dash_slide_seconds * ratio
 	if _dash_dir.length_squared() < 0.01:
 		_dash_dir = _facing()
 	_slide_dir = _dash_dir
-	_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
 	_set_capsule(profile.height_slide)
 	_set_state(State.SLIDING)
 
@@ -596,11 +599,11 @@ func _apply_air(intent: MovementIntent, dt: float) -> void:
 
 
 func _apply_slide(intent: MovementIntent, dt: float) -> void:
+	var drag := profile.slide_friction
 	if _coast_left > 0.0:
-		# A dash into crouch keeps the burst. Friction starts only after that window.
-		_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
-	else:
-		_slide_speed -= profile.slide_friction * dt
+		# The coast keeps a fraction of the speed you already had. It does not jump up to dash speed.
+		drag *= profile.dash_slide_drag
+	_slide_speed -= drag * dt
 	if _coast_left <= 0.0 and _body.is_on_floor():
 		var normal := _body.get_floor_normal()
 		var slope := acos(clampf(normal.dot(Vector3.UP), -1.0, 1.0))

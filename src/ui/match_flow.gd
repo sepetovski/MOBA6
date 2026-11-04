@@ -12,6 +12,8 @@ enum Phase { MENU, WAIT, FLYOVER, WEST, EAST, COUNTDOWN, PLAY, RESULTS }
 const FLY_SECONDS := 6.2
 const SIDE_SECONDS := 2.5
 
+var _span := 40.0
+
 var _camera: MobaCamera
 var _sim: Simulation
 var _phase := Phase.MENU
@@ -31,6 +33,10 @@ var _count_label: Label
 var _results: Control
 var _result_title: Label
 var _result_body: Label
+
+
+func set_arena_span(apothem: float) -> void:
+	_span = maxf(apothem, 20.0)
 
 
 func open_menu(camera: MobaCamera) -> void:
@@ -92,15 +98,16 @@ func _process(delta: float) -> void:
 		Phase.FLYOVER:
 			var t := clampf(_time / FLY_SECONDS, 0.0, 1.0)
 			var eased := t * t * (3.0 - 2.0 * t)
-			_camera.present(Vector3(lerpf(-34.0, 34.0, eased), 0.0, 2.0), 46.0, false)
+			var end := _span * 0.82
+			_camera.present(Vector3(lerpf(-end, end, eased), 0.0, 2.0), maxf(46.0, _span * 1.05), false)
 			if _time >= FLY_SECONDS:
 				_enter_side(true)
 		Phase.WEST:
-			_camera.present(Vector3(-41.0, 0.0, 0.0), 22.0, false)
+			_camera.present(Vector3(-_span * 0.92, 0.0, 0.0), 26.0, false)
 			if _time >= SIDE_SECONDS:
 				_enter_side(false)
 		Phase.EAST:
-			_camera.present(Vector3(41.0, 0.0, 0.0), 22.0, false)
+			_camera.present(Vector3(_span * 0.92, 0.0, 0.0), 26.0, false)
 			if _time >= SIDE_SECONDS:
 				_enter_countdown()
 		Phase.COUNTDOWN:
@@ -256,7 +263,7 @@ func _build_options() -> void:
 	var body := _text("", 18, Color(0.93, 0.91, 0.84))
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(520, 180)
-	body.text = "Right-click moves. Hold to steer.\nSpace jumps. Near a rock it grabs the ledge.\nShift dashes. You have two. One refills on its own. Spend both and they come back faster.\nCtrl after a dash slides and keeps that speed.\nCtrl while running also slides."
+	body.text = "Right-click moves. Hold to steer.\nLeft-click fires. Melee swings, ranged throws a ball. The number by the cursor is ammo.\nSpace jumps. Boxes and bridges are there to climb.\nShift dashes. You have two, and they come back slowly.\nCtrl after a dash is a short slide. It does not add speed."
 	box.add_child(body)
 	box.add_child(_button("Back", func() -> void: _show_menu()))
 

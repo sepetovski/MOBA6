@@ -4,6 +4,7 @@ class_name Combat extends RefCounted
 
 var attack_target := -1
 var cooldowns: Array[float] = []
+var trigger_down := false
 
 var _unit: SimUnit
 var _stats: UnitStats
@@ -13,6 +14,7 @@ var _dash_slash := false
 var _dash_radius := 0.0
 var _dash_damage := 0.0
 var _bombs: Array[Dictionary] = []
+var _magazine := Magazine.new()
 
 
 func setup(unit: SimUnit, hero: HeroDefinition) -> void:
@@ -22,6 +24,7 @@ func setup(unit: SimUnit, hero: HeroDefinition) -> void:
 	cooldowns.clear()
 	for _ability in _abilities:
 		cooldowns.append(0.0)
+	_magazine.fill(_stats.magazine, _stats.reload_seconds, _stats.attack_interval)
 
 
 func attack_range() -> float:
@@ -70,6 +73,22 @@ func clear_attack() -> void:
 	attack_target = -1
 
 
+func set_trigger(down: bool) -> void:
+	trigger_down = down
+
+
+func rounds() -> int:
+	return _magazine.rounds
+
+
+func capacity() -> int:
+	return _magazine.capacity
+
+
+func reloading() -> bool:
+	return _magazine.reloading()
+
+
 func cast(slot: int, point: Vector3) -> void:
 	if slot < 0 or slot >= _abilities.size():
 		return
@@ -92,11 +111,14 @@ func cast(slot: int, point: Vector3) -> void:
 
 func begin(dt: float, sim: Simulation) -> void:
 	_attack_wait = maxf(_attack_wait - dt, 0.0)
+	_magazine.tick(dt)
 	for index in cooldowns.size():
 		cooldowns[index] = maxf(cooldowns[index] - dt, 0.0)
 	_tick_bombs(dt, sim)
 	if not _unit.state.alive or not _unit.motor.can_move:
 		return
+	if trigger_down:
+		_fire_held(sim)
 	if attack_target < 0:
 		return
 	var target := sim.get_unit(attack_target)
@@ -126,6 +148,25 @@ func begin(dt: float, sim: Simulation) -> void:
 		return
 	_slash(reach, _stats.attack_damage)
 	_flash(1.6, 0.12)
+
+
+func _fire_held(sim: Simulation) -> void:
+	if not _magazine.try_spend():
+		return
+	var point := _unit.aim_point
+	if point == Vector3.INF:
+		point = _unit.global_position - _unit.global_basis.z * 6.0
+	_face_cast(point)
+	var aim := point - _unit.global_position
+	aim.y = 0.0
+	if aim.length_squared() < 0.04:
+		aim = -_unit.global_basis.z
+		aim.y = 0.0
+	if _stats.attack == UnitStats.Attack.RANGED:
+		sim.launch_projectile(_unit, point, aim, _stats.projectile_speed, _stats.attack_damage, _shot_color())
+		_flash(0.45, 0.06)
+		return
+	_slash(_stats.attack_range + 0.4, _stats.attack_damage)
 
 
 func finish() -> void:

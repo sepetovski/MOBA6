@@ -23,6 +23,7 @@ var _last_steer := Vector3.ZERO
 var _cursor := Vector2.ZERO
 var _cursor_valid := false
 var _crouched := false
+var _firing := false
 var face_cursor := false
 
 
@@ -71,6 +72,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		_mark_handled()
 	elif event.is_action_pressed(&"dash"):
 		_emit(Command.Kind.DASH, _ground_or_zero(), true)
+		_mark_handled()
+	elif event.is_action_pressed(&"fire"):
+		_firing = true
+		_emit(Command.Kind.FIRE, _ground_or_zero(), true)
+		_mark_handled()
+	elif event.is_action_released(&"fire"):
+		_firing = false
+		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
 		_mark_handled()
 	elif event.is_action_pressed(&"ability_1"):
 		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 0)
@@ -151,6 +160,9 @@ func _clear_hold() -> void:
 	_right_down = false
 	_held_time = 0.0
 	_steering = false
+	if _firing:
+		_firing = false
+		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
 
 
 func _emit(kind: Command.Kind, point: Vector3, pressed: bool, target_id := -1, slot := -1) -> void:

@@ -11,11 +11,12 @@ func get_spawn_slot(team: int, slot: int) -> Transform3D:
 	var z := float(col - 1) * 2.0
 	var x: float
 	var yaw: float
+	var gate := _layout.apothem + 4.0
 	if team == Team.Id.A:
-		x = -44.0 - 2.0 * float(row)
+		x = -gate - 2.0 * float(row)
 		yaw = -90.0
 	else:
-		x = 44.0 + 2.0 * float(row)
+		x = gate + 2.0 * float(row)
 		yaw = 90.0
 	var basis := ArenaMath.yaw_to_basis(yaw)
 	return Transform3D(basis, Vector3(x, 0.0, z))
@@ -36,5 +37,18 @@ func get_bounds() -> AABB:
 func get_octagon_polygon() -> PackedVector2Array:
 	return ArenaMath.vertices(_layout.apothem)
 
+func get_apothem() -> float:
+	return _layout.apothem
+
 func contains_xz(point: Vector2) -> bool:
 	return ArenaMath.contains(point, _layout.apothem)
+
+func allows(point: Vector3) -> bool:
+	if point.y <= -1.0 or point.y >= 8.0:
+		return false
+	if contains_xz(Vector2(point.x, point.z)):
+		return true
+	var gate := _layout.apothem
+	var mouth := _layout.gate_width * 0.55
+	var outer := gate + _layout.wall_thickness + _layout.gate_depth + 1.5
+	return absf(point.z) <= mouth and absf(point.x) >= gate - 2.5 and absf(point.x) <= outer
