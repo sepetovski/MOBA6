@@ -54,6 +54,7 @@ func _on_play() -> void:
 		return
 	var config := (load(MATCH) as MatchConfig).duplicate(true) as MatchConfig
 	config.countdown_seconds = 3.0
+	config.human_hero_id = _flow.chosen_hero_id()
 	var bots := load(BOTS) as BotConfig
 	_simulation = Simulation.new()
 	_simulation.name = "Simulation"

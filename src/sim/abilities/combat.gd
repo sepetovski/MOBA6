@@ -135,9 +135,8 @@ func begin(dt: float, sim: Simulation) -> void:
 		_unit.intent.steering = false
 		return
 	_unit.intent.stop = true
-	if _attack_wait > 0.0:
+	if not _magazine.try_spend():
 		return
-	_attack_wait = _stats.attack_interval
 	if _stats.attack == UnitStats.Attack.RANGED:
 		var aim := -_unit.global_basis.z
 		aim.y = 0.0

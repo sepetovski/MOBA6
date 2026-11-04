@@ -9,14 +9,23 @@ func get_spawn_slot(team: int, slot: int) -> Transform3D:
 	var row := int(slot / 3)
 	var col := slot % 3
 	var z := float(col - 1) * 2.0
+	# The deep test tunnel fits the old 44 m / 46 m rows. A short match tunnel
+	# clamps both rows so the back three are not inside the back wall.
+	var preferred := _layout.apothem + 4.0 + 2.0 * float(row)
+	var inner_limit := _layout.apothem + _layout.wall_thickness + 1.5
+	var outer_face := _layout.apothem + _layout.wall_thickness + float(_layout.stand_rows) * _layout.stand_row_depth
+	var outer_limit := outer_face - 1.2
+	var along := preferred
+	if preferred > outer_limit or preferred < inner_limit:
+		var t := 0.28 if row == 0 else 0.78
+		along = lerpf(inner_limit, maxf(outer_limit, inner_limit), t)
 	var x: float
 	var yaw: float
-	var gate := _layout.apothem + 4.0
 	if team == Team.Id.A:
-		x = -gate - 2.0 * float(row)
+		x = -along
 		yaw = -90.0
 	else:
-		x = gate + 2.0 * float(row)
+		x = along
 		yaw = 90.0
 	var basis := ArenaMath.yaw_to_basis(yaw)
 	return Transform3D(basis, Vector3(x, 0.0, z))

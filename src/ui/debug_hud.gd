@@ -567,7 +567,7 @@ func _update_ammo() -> void:
 		_ammo.text = "Reload"
 		_ammo.add_theme_color_override("font_color", Color(0.95, 0.55, 0.28))
 	else:
-		_ammo.text = "%d" % human.combat.rounds()
+		_ammo.text = "%d/%d" % [human.combat.rounds(), human.combat.capacity()]
 		_ammo.add_theme_color_override("font_color", Color(0.96, 0.94, 0.82))
 	var mouse := get_viewport().get_mouse_position()
 	_ammo.position = mouse + Vector2(16, 18)
