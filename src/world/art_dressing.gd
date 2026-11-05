@@ -6,6 +6,7 @@ class_name ArtDressing extends RefCounted
 const KIT := "res://art/exports/Stylized Nature MegaKit[Standard]/glTF"
 const WOOD := Color(0.46, 0.32, 0.18)
 const WOOD_DARK := Color(0.34, 0.24, 0.14)
+const ENV_SCALE := 1.14
 
 static var _reach := 36.0
 static var _lane_z := 18.0
@@ -182,7 +183,7 @@ static func _field(root: Node3D, rng: RandomNumberGenerator, file_name: String, 
 		if not _accepts(spot, kind):
 			continue
 		var yaw := rng.randf() * TAU
-		var size := scale * rng.randf_range(0.85, 1.15)
+		var size := scale * ENV_SCALE * rng.randf_range(0.85, 1.15)
 		var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * size)
 		multi.set_instance_transform(placed, Transform3D(basis, Vector3(spot.x, -min_y * size, spot.z)))
 		placed += 1
@@ -203,6 +204,7 @@ static func _place(root: Node3D, file_name: String, spot: Vector3, target_height
 		var scale := 1.0
 		if target_height > 0.1 and box.size.y > 0.001:
 			scale = target_height / box.size.y
+		scale *= ENV_SCALE
 		node.scale = Vector3(scale * wide, scale, scale * wide)
 		node.position = Vector3(side.x, -box.position.y * scale, side.z)
 		node.rotation.y = fmod(side.x * 0.37 + side.z * 0.21, TAU)
@@ -211,7 +213,7 @@ static func _place(root: Node3D, file_name: String, spot: Vector3, target_height
 		_shadows(node, false)
 		root.add_child(node)
 		if solid:
-			_collider(root, node.position, box, scale, trunk, bulk, wide)
+			_collider(root, node.position, box, scale, trunk * ENV_SCALE, bulk, wide)
 
 
 static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk: float, bulk: float, wide: float) -> void:

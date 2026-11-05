@@ -183,7 +183,7 @@ func _status() -> String:
 	elif _sim.get_match_state() == Match.State.SETUP:
 		state_name = "setup"
 	var camera_mode := "LOCKED" if _camera.is_locked() else "FREE"
-	var camera_hint := "Y lock" if _camera.is_locked() else "edge or middle-mouse pans, Y locks"
+	var camera_hint := "middle-mouse orbits, hold Y to orbit you" if _camera.is_locked() else "middle-mouse orbits, Y locks"
 	var body := "FPS %.0f\ntick %d\n%s  %.1f s\nCamera %s  (%s)\nTAB scoreboard" % [
 		Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds(), camera_mode, camera_hint
 	]

@@ -14,6 +14,7 @@ class_name CameraProfile extends Resource
 @export var edge_pan_margin_px := 12         # px
 @export var edge_pan_speed := 30.0           # m/s
 @export var key_pan_speed := 30.0            # m/s
+@export var orbit_deg_per_pixel := 0.22      # middle-mouse orbit, degrees per pixel
 @export var bounds_margin := 6.0             # m beyond the arena bounds for the focus point
 @export var occluded_transparency := 0.75    # 0 = opaque, 1 = invisible
 @export var occlusion_fade_speed := 6.0      # transparency per second

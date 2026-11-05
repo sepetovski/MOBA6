@@ -82,6 +82,7 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Edge-pan margin | px | 12 | `data/camera_profiles/default.tres` | Unlocked camera only |
 | Edge-pan speed | m/s | 30 | `data/camera_profiles/default.tres` | World axes. Screen-up is north (−Z) |
 | Key-pan speed | m/s | 30 | `data/camera_profiles/default.tres` | Arrow actions `camera_pan_*` |
+| Orbit | deg / pixel | 0.22 | `data/camera_profile.gd` | Middle-mouse yaw. Hold Y and the pivot is the character |
 | Bounds margin | m | 6 | `data/camera_profiles/default.tres` | Focus XZ may leave `ArenaInfo` bounds by this much |
 | Occluded transparency | 0 opaque, 1 invisible | 0.75 | `data/camera_profiles/default.tres` | Forward+ `GeometryInstance3D.transparency` |
 | Occlusion fade speed | transparency / s | 6 | `data/camera_profiles/default.tres` | Linear ease. Fully visible snaps to exactly 0 |
