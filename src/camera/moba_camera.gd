@@ -206,7 +206,22 @@ func _pan_velocity() -> Vector3:
 	if key != Vector3.ZERO:
 		velocity += key.normalized() * tuned.key_pan_speed
 	velocity += _edge_velocity()
-	return velocity
+	return _along_view(velocity)
+
+
+func _along_view(direction: Vector3) -> Vector3:
+	# direction.x is screen-right, direction.z is screen-down. After a yaw, those follow the camera.
+	if direction.length_squared() < 0.0001:
+		return direction
+	var right := global_basis.x
+	var forward := -global_basis.z
+	right.y = 0.0
+	forward.y = 0.0
+	if right.length_squared() < 0.0001 or forward.length_squared() < 0.0001:
+		return direction
+	right = right.normalized()
+	forward = forward.normalized()
+	return right * direction.x - forward * direction.z
 
 
 func _edge_velocity() -> Vector3:

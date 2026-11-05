@@ -96,6 +96,18 @@ func test_arrow_pan_moves_only_when_unlocked() -> void:
 	assert_lt(cam.global_position.x, -10.0)
 
 
+func test_free_pan_follows_the_camera_yaw() -> void:
+	var cam := _camera()
+	cam.set_locked(false)
+	cam._yaw = PI * 0.5
+	cam._apply_rig()
+	Input.action_press(&"camera_pan_left")
+	cam._process(0.5)
+	Input.action_release(&"camera_pan_left")
+	assert_gt(cam.global_position.z, 10.0)
+	assert_almost_eq(cam.global_position.x, 0.0, 0.5)
+
+
 func test_follow_eases_toward_the_target() -> void:
 	var cam := _camera()
 	var target := Node3D.new()
