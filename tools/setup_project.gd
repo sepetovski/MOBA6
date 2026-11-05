@@ -62,6 +62,10 @@ func _apply_display_and_physics() -> void:
 	ProjectSettings.set_setting("physics/common/physics_ticks_per_second", 60)
 	ProjectSettings.set_setting("physics/common/physics_interpolation", true)
 	ProjectSettings.set_setting("rendering/renderer/rendering_method", "forward_plus")
+	ProjectSettings.set_setting("application/run/max_fps", 60)
+	ProjectSettings.set_setting("display/window/vsync/vsync_mode", 1)
+	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/size", 1024)
+	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", 0)
 	ProjectSettings.set_setting("navigation/3d/default_cell_size", 0.2)
 	ProjectSettings.set_setting("navigation/3d/default_cell_height", 0.1)
 

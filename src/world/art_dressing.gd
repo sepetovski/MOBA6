@@ -78,11 +78,15 @@ static func _routes(root: Node3D) -> void:
 	# Bridges sit in the jungle, off the lanes. The deck matches its collider.
 	_bridge(root, Vector3(-28.0, 0.0, -_lane_z * 0.5))
 	_bridge(root, Vector3(26.0, 0.0, _lane_z * 0.5))
+	# Wide tops you can stand on and walk off. 1.65 m needs the second jump. 1.9 m is a mantle.
+	_platform(root, Vector3(-16.0, 0.0, _lane_z * 0.42), Vector3(2.8, 1.65, 2.8), 1.65, WOOD)
+	_platform(root, Vector3(20.0, 0.0, -_lane_z * 0.42), Vector3(2.8, 1.65, 2.8), 1.65, WOOD)
+	_platform(root, Vector3(6.0, 0.0, _lane_z * 0.55), Vector3(1.6, 1.9, 1.5), 1.9, WOOD_DARK)
+	_platform(root, Vector3(-22.0, 0.0, -_lane_z * 0.62), Vector3(1.6, 1.9, 1.5), 1.9, WOOD_DARK)
 	var crate_z: Array[float] = [-_lane_z, 0.0, _lane_z]
 	for lane_z in crate_z:
-		_crate(root, Vector3(-12.0, 0.0, lane_z + 5.2), Vector3(1.3, 0.7, 1.3))
-		_crate(root, Vector3(18.0, 0.0, lane_z - 5.0), Vector3(1.1, 0.42, 1.1))
-		_crate(root, Vector3(8.0, 0.0, lane_z + 5.4), Vector3(0.9, 0.42, 0.9))
+		_crate(root, Vector3(-8.0, 0.0, lane_z + 5.4), Vector3(1.4, 0.45, 1.4))
+		_crate(root, Vector3(12.0, 0.0, lane_z - 5.2), Vector3(1.2, 0.45, 1.2))
 
 
 static func _bridge(root: Node3D, at: Vector3) -> void:
@@ -204,7 +208,7 @@ static func _place(root: Node3D, file_name: String, spot: Vector3, target_height
 		node.rotation.y = fmod(side.x * 0.37 + side.z * 0.21, TAU)
 		if leaf.a > 0.5:
 			_tint_leaves(node, leaf)
-		_shadows(node, solid)
+		_shadows(node, false)
 		root.add_child(node)
 		if solid:
 			_collider(root, node.position, box, scale, trunk, bulk, wide)
