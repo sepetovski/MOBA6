@@ -48,6 +48,23 @@ static func blurb(id: String) -> String:
 	return ""
 
 
+static func model_for(id: StringName) -> String:
+	var file_name := ""
+	match String(id):
+		"gladiator":
+			file_name = "knight_C.glb"
+		"skirmisher":
+			file_name = "elf_C.glb"
+		"slinger":
+			file_name = "mage_C.glb"
+		_:
+			return ""
+	var path := "res://art/exports/runtime/characters/%s" % file_name
+	if ResourceLoader.exists(path):
+		return path
+	return ""
+
+
 static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
 	hero.stats.attack = UnitStats.Attack.MELEE

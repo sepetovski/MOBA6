@@ -62,6 +62,8 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Dash slide hold | s | 0.9, hero 0.36 | `data/movement_profile.gd` | Longest dash-slide. A slower entry is shorter. The slide holds `dash_slide_keep` of dash speed, not the full burst |
 | Dash slide keep |  | 0.55 | `data/movement_profile.gd` | Fraction of dash speed the slide may hold. It never speeds you up |
 | Hero run speed | m/s | 4.5 | `data/movement_profiles/gladiator.tres` | Slower than the 6 m/s default so the dash reads as the fast move. Tests still use 6 |
+| Profile name length | characters | 16 | `src/profile/player_profile.gd` | Display name on the human unit |
+| Profile history | matches | 20 | `src/profile/player_profile.gd` | Newest first. Career totals still count every match |
 | Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
 | Melee magazine | swings | 8 and 10 | `src/sim/abilities/hero_catalog.gd` | Gladiator 8, Skirmisher 10. Reload 1.7 s and 1.45 s |
 | Ranged magazine | shots | 18 | `src/sim/abilities/hero_catalog.gd` | Slinger. Faster interval 0.22 s, 7 damage, reload 1.35 s |

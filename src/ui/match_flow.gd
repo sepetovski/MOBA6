@@ -33,13 +33,14 @@ var _count_label: Label
 var _results: Control
 var _result_title: Label
 var _result_body: Label
-var _role := "melee"
-var _hero_id := "gladiator"
+var _name_edit: LineEdit
+var _career: Label
 var _hero_box: VBoxContainer
 var _melee_button: Button
 var _ranged_button: Button
-
-const _PICK_PATH := "user://hero_pick.cfg"
+var _record: Control
+var _record_body: Label
+var _filling := false
 
 
 func set_arena_span(apothem: float) -> void:
@@ -47,7 +48,7 @@ func set_arena_span(apothem: float) -> void:
 
 
 func chosen_hero_id() -> String:
-	return _hero_id
+	return ProfileStore.current().hero_id
 
 
 func open_menu(camera: MobaCamera) -> void:
@@ -213,17 +214,23 @@ func _fill_results() -> void:
 				who, state.kills, state.deaths, state.assists, int(round(state.damage_dealt)), state.gold,
 			])
 		lines.append("")
+	var profile := ProfileStore.current()
+	lines.append(profile.career_line())
+	lines.append("Saved to your profile. No replay, stats only.")
 	_result_body.text = "\n".join(lines)
 
 
 func _show_menu() -> void:
 	_hide_panels()
+	_refresh_profile()
 	_menu.visible = true
 
 
 func _hide_panels() -> void:
 	_menu.visible = false
 	_options.visible = false
+	if _record != null:
+		_record.visible = false
 	_busy.visible = false
 	_banner.visible = false
 	_roster.visible = false
@@ -238,9 +245,11 @@ func _build() -> void:
 	add_child(root)
 	_menu = _centered(root)
 	_options = _centered(root)
+	_record = _centered(root)
 	_results = _centered(root)
 	_build_menu()
 	_build_options()
+	_build_record()
 	_build_banner(root)
 	_build_roster(root)
 	_build_count(root)
@@ -257,18 +266,26 @@ func _build() -> void:
 
 
 func _build_menu() -> void:
-	var box := _stack(_menu, 460.0)
+	var box := _stack(_menu, 520.0)
 	box.add_child(_text("Gladiator Arena", 44, Color(0.98, 0.95, 0.86)))
 	box.add_child(_text("Pick how you fight, then play.", 18, Color(0.9, 0.88, 0.78)))
+	_name_edit = LineEdit.new()
+	_name_edit.placeholder_text = "Your name"
+	_name_edit.max_length = PlayerProfile.NAME_LIMIT
+	_name_edit.custom_minimum_size = Vector2(0, 42)
+	_name_edit.caret_blink = true
+	_style_name(_name_edit)
+	_name_edit.text_submitted.connect(func(_value: String) -> void: _commit_name())
+	_name_edit.focus_exited.connect(_commit_name)
+	box.add_child(_name_edit)
+	var hint := _text("Saved on this machine. A Steam login can use this profile later.", 14, Color(0.75, 0.78, 0.68))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(hint)
 	var roles := HBoxContainer.new()
 	roles.alignment = BoxContainer.ALIGNMENT_CENTER
 	roles.add_theme_constant_override("separation", 12)
-	_melee_button = Button.new()
-	_melee_button.text = "Melee"
-	_melee_button.custom_minimum_size = Vector2(160, 44)
-	_ranged_button = Button.new()
-	_ranged_button.text = "Ranged"
-	_ranged_button.custom_minimum_size = Vector2(160, 44)
+	_melee_button = _choice("Melee", true)
+	_ranged_button = _choice("Ranged", false)
 	_melee_button.pressed.connect(func() -> void: _pick_role("melee"))
 	_ranged_button.pressed.connect(func() -> void: _pick_role("ranged"))
 	roles.add_child(_melee_button)
@@ -277,13 +294,23 @@ func _build_menu() -> void:
 	_hero_box = VBoxContainer.new()
 	_hero_box.add_theme_constant_override("separation", 8)
 	box.add_child(_hero_box)
-	box.add_child(_button("Play", func() -> void: play_requested.emit()))
+	_career = _text("", 16, Color(0.9, 0.86, 0.7))
+	_career.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_career.custom_minimum_size = Vector2(480, 36)
+	box.add_child(_career)
+	box.add_child(_button("Play", _on_play_pressed))
+	box.add_child(_button("Record", func() -> void:
+		_commit_name()
+		_fill_record()
+		_menu.visible = false
+		_record.visible = true
+	))
 	box.add_child(_button("Settings", func() -> void:
+		_commit_name()
 		_menu.visible = false
 		_options.visible = true
 	))
-	_load_pick()
-	_paint_pick()
+	_refresh_profile()
 
 
 func _build_options() -> void:
@@ -292,47 +319,122 @@ func _build_options() -> void:
 	_options.add_child(panel)
 
 
+func _build_record() -> void:
+	var box := _stack(_record, 560.0)
+	box.add_child(_text("Record", 40, Color(0.98, 0.95, 0.86)))
+	_record_body = _text("", 16, Color(0.93, 0.91, 0.84))
+	_record_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_record_body.custom_minimum_size = Vector2(520, 220)
+	box.add_child(_record_body)
+	box.add_child(_button("Back", func() -> void: _show_menu()))
+
+
+func _on_play_pressed() -> void:
+	_commit_name()
+	play_requested.emit()
+
+
 func _pick_role(role: String) -> void:
-	_role = "ranged" if role == "ranged" else "melee"
-	var ids := HeroCatalog.ids_for_role(_role)
-	if ids.is_empty():
-		return
-	if ids.find(_hero_id) < 0:
-		_hero_id = ids[0]
-	_save_pick()
-	_paint_pick()
+	var profile := ProfileStore.current()
+	profile.set_role(role)
+	ProfileStore.save()
+	_refresh_profile()
 
 
 func _pick_hero(id: String) -> void:
-	var hero := HeroCatalog.by_id(StringName(id))
-	if hero == null:
-		return
-	_hero_id = String(hero.id)
-	_role = HeroCatalog.role_name(hero)
-	_save_pick()
-	_paint_pick()
+	var profile := ProfileStore.current()
+	profile.set_hero(id)
+	ProfileStore.save()
+	_refresh_profile()
 
 
-func _paint_pick() -> void:
-	if _melee_button == null or _hero_box == null:
+func _commit_name() -> void:
+	if _name_edit == null:
 		return
-	_mark_choice(_melee_button, _role != "ranged")
-	_mark_choice(_ranged_button, _role == "ranged")
+	var profile := ProfileStore.current()
+	profile.set_name(_name_edit.text)
+	_filling = true
+	_name_edit.text = profile.player_name
+	_filling = false
+	ProfileStore.save()
+
+
+func _refresh_profile() -> void:
+	if _name_edit == null or _hero_box == null:
+		return
+	var profile := ProfileStore.current()
+	_filling = true
+	_name_edit.text = profile.player_name
+	_filling = false
+	_mark(_melee_button, profile.role != "ranged")
+	_mark(_ranged_button, profile.role == "ranged")
 	for child in _hero_box.get_children():
 		_hero_box.remove_child(child)
 		child.free()
-	for id in HeroCatalog.ids_for_role(_role):
+	for id in HeroCatalog.ids_for_role(profile.role):
 		var hero := HeroCatalog.by_id(StringName(id))
-		var button := Button.new()
-		button.text = "%s\n%s" % [hero.display_name, HeroCatalog.blurb(id)]
+		var caption := "%s\n%s" % [hero.display_name, HeroCatalog.blurb(id)]
+		var button := _choice(caption, id == profile.hero_id)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size = Vector2(420, 58)
+		button.custom_minimum_size = Vector2(480, 64)
 		button.pressed.connect(_pick_hero.bind(id))
-		_mark_choice(button, id == _hero_id)
 		_hero_box.add_child(button)
+	if _career != null:
+		_career.text = profile.career_line()
 
 
-func _mark_choice(button: Button, selected: bool) -> void:
+func _fill_record() -> void:
+	var profile := ProfileStore.current()
+	var lines: PackedStringArray = [profile.player_name, profile.career_line(), ""]
+	if profile.history.is_empty():
+		lines.append("Play a match and the score lands here.")
+	else:
+		for entry in profile.history:
+			var when := Time.get_datetime_string_from_unix_time(int(entry.get("at", 0)), true)
+			lines.append("%s    %s    %s    %s    %d/%d/%d    %d dmg%s" % [
+				when,
+				str(entry.get("result", "")).capitalize(),
+				str(entry.get("hero_name", "")),
+				str(entry.get("role", "")),
+				int(entry.get("kills", 0)),
+				int(entry.get("deaths", 0)),
+				int(entry.get("assists", 0)),
+				int(entry.get("damage", 0)),
+				"    MVP" if bool(entry.get("mvp", false)) else "",
+			])
+	_record_body.text = "\n".join(lines)
+
+
+func _style_name(edit: LineEdit) -> void:
+	edit.add_theme_font_size_override("font_size", 22)
+	edit.add_theme_color_override("font_color", Color(0.98, 0.96, 0.9))
+	edit.add_theme_color_override("font_placeholder_color", Color(0.7, 0.72, 0.64))
+	edit.add_theme_color_override("caret_color", Color(0.95, 0.88, 0.55))
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.05, 0.07, 0.05, 0.9)
+	box.border_color = Color(0.86, 0.78, 0.42)
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(8)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	edit.add_theme_stylebox_override("normal", box)
+
+
+func _choice(label: String, selected: bool) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size = Vector2(160, 44)
+	button.add_theme_font_size_override("font_size", 18)
+	button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mark(button, selected)
+	return button
+
+
+func _mark(button: Button, selected: bool) -> void:
+	if button == null:
+		return
 	var box := StyleBoxFlat.new()
 	box.set_corner_radius_all(8)
 	box.set_border_width_all(2)
@@ -351,22 +453,6 @@ func _mark_choice(button: Button, selected: bool) -> void:
 	button.add_theme_stylebox_override("normal", box)
 	button.add_theme_stylebox_override("hover", box)
 	button.add_theme_stylebox_override("pressed", box)
-
-
-func _load_pick() -> void:
-	var file := ConfigFile.new()
-	if file.load(_PICK_PATH) != OK:
-		return
-	_role = str(file.get_value("pick", "role", "melee"))
-	_hero_id = str(file.get_value("pick", "hero", "gladiator"))
-	_pick_role(_role)
-
-
-func _save_pick() -> void:
-	var file := ConfigFile.new()
-	file.set_value("pick", "role", _role)
-	file.set_value("pick", "hero", _hero_id)
-	file.save(_PICK_PATH)
 
 
 func _build_banner(root: Control) -> void:
