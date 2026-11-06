@@ -7,6 +7,9 @@ const KIT := "res://art/exports/Stylized Nature MegaKit[Standard]/glTF"
 const WOOD := Color(0.46, 0.32, 0.18)
 const WOOD_DARK := Color(0.34, 0.24, 0.14)
 const ENV_SCALE := 1.14
+const SHOT_COVER_WIDTH := 0.7 # fraction of the canopy, so the outer leaves are not a solid cube
+const SHOT_COVER_HEIGHT := 0.88 # fraction of the tree height kept as a shot wall
+const SHOT_COVER_MIN_WIDTH := 1.2 # m, a thin trunk still stops a shot
 
 static var _reach := 36.0
 static var _lane_z := 18.0
@@ -102,14 +105,16 @@ static func _crate(root: Node3D, at: Vector3, size: Vector3) -> void:
 
 static func _platform(root: Node3D, at: Vector3, size: Vector3, top: float, color: Color) -> void:
 	var body := StaticBody3D.new()
-	body.collision_layer = GameConfig.LAYER_PROPS
+	body.collision_layer = GameConfig.LAYER_PROPS | GameConfig.LAYER_OCCLUDERS
 	body.collision_mask = 0
+	body.set_meta("shot_cover", true)
 	body.position = Vector3(at.x, top - size.y * 0.5, at.z)
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	var visual := MeshInstance3D.new()
 	visual.mesh = mesh
 	visual.material_override = GreyMaterials.flat_material(color)
+	visual.add_to_group(&"cover_fade")
 	body.add_child(visual)
 	var shape := BoxShape3D.new()
 	shape.size = size
@@ -214,6 +219,8 @@ static func _place(root: Node3D, file_name: String, spot: Vector3, target_height
 		root.add_child(node)
 		if solid:
 			_collider(root, node.position, box, scale, trunk * ENV_SCALE, bulk, wide)
+			_shot_wall(root, node)
+			node.add_to_group(&"cover_fade")
 
 
 static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk: float, bulk: float, wide: float) -> void:
@@ -234,6 +241,29 @@ static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk:
 		shape.size = Vector3(maxf(box.size.x * scale * wide * bulk, 0.9), height, maxf(box.size.z * scale * wide * bulk, 0.9))
 		shape_node.shape = shape
 		shape_node.position = Vector3(0.0, shape.size.y * 0.5, 0.0)
+	body.add_child(shape_node)
+	root.add_child(body)
+
+
+static func _shot_wall(root: Node3D, visual: Node3D) -> void:
+	var box := _bounds(visual)
+	if box.size.y < 1.5:
+		return
+	var size := box.size
+	size.x = maxf(size.x * SHOT_COVER_WIDTH, SHOT_COVER_MIN_WIDTH)
+	size.z = maxf(size.z * SHOT_COVER_WIDTH, SHOT_COVER_MIN_WIDTH)
+	size.y = maxf(size.y * SHOT_COVER_HEIGHT, 2.4)
+	var body := StaticBody3D.new()
+	body.name = "ShotCover"
+	body.collision_layer = GameConfig.LAYER_OCCLUDERS
+	body.collision_mask = 0
+	body.set_meta("shot_cover", true)
+	var center := box.get_center()
+	body.position = Vector3(center.x, box.position.y + size.y * 0.5, center.z)
+	var shape_node := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	shape_node.shape = shape
 	body.add_child(shape_node)
 	root.add_child(body)
 

@@ -485,10 +485,13 @@ func launch_projectile_from(origin: Vector3, team: int, owner_id: int, direction
 func _step_projectiles(dt: float) -> void:
 	var keep: Array[CombatProjectile] = []
 	for shot in _shots:
+		var previous := shot.position
 		shot.position += shot.velocity * dt
 		if shot.mesh != null:
 			shot.mesh.global_position = shot.position
 		var spent := shot.position.distance_to(shot.origin) > 28.0
+		if not spent and _shot_hits_cover(previous, shot.position):
+			spent = true
 		if not spent:
 			for unit in get_units():
 				if not unit.state.alive or unit.team == shot.team:
@@ -506,6 +509,25 @@ func _step_projectiles(dt: float) -> void:
 		else:
 			keep.append(shot)
 	_shots = keep
+
+
+func _shot_hits_cover(from: Vector3, to: Vector3) -> bool:
+	if from.distance_squared_to(to) < 0.000001:
+		return false
+	var viewport := get_viewport()
+	if viewport == null:
+		return false
+	var world := viewport.find_world_3d()
+	if world == null:
+		return false
+	var query := PhysicsRayQueryParameters3D.create(from, to, GameConfig.LAYER_OCCLUDERS)
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var hit: Dictionary = world.direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return false
+	var collider := hit.get("collider") as Node
+	return collider != null and collider.has_meta("shot_cover")
 
 
 func _revive_ready() -> void:
@@ -528,7 +550,8 @@ func _revive_ready() -> void:
 
 func damage_props(point: Vector3, radius: float, amount: float, hit_towers := true) -> bool:
 	var hit := false
-	hit = _hurt_destructibles(_arena, point, radius + 1.2, amount) or hit
+	if _arena != null:
+		hit = _hurt_destructibles(_arena, point, radius + 1.2, amount) or hit
 	if hit_towers:
 		for tower in _towers:
 			if tower.health <= 0.0:

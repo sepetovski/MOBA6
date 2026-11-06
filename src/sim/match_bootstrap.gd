@@ -83,6 +83,7 @@ func _on_play() -> void:
 	add_child(fader)
 	if human != null and _camera.camera != null:
 		fader.bind(_camera.camera, human, _camera.profile)
+	fader.watch(_simulation)
 	for unit in _simulation.get_units():
 		if unit.state.controller != UnitState.Controller.BOT:
 			continue

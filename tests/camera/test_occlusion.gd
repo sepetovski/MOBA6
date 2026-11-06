@@ -67,6 +67,62 @@ func test_blocking_instance_eases_toward_the_profile() -> void:
 	assert_almost_eq(box.transparency, 0.2, 0.001)
 
 
+func test_cover_fades_when_an_enemy_is_behind_it() -> void:
+	var camera := Camera3D.new()
+	camera.position = Vector3(0.0, 4.0, 8.0)
+	var focus := Node3D.new()
+	var tree := Node3D.new()
+	tree.position = Vector3(0.0, 0.0, 2.0)
+	var leaves := MeshInstance3D.new()
+	var leaf_mesh := BoxMesh.new()
+	leaf_mesh.size = Vector3(2.0, 4.0, 1.0)
+	leaves.mesh = leaf_mesh
+	leaves.position = Vector3(0.0, 2.0, 0.0)
+	tree.add_child(leaves)
+	tree.add_to_group(&"cover_fade")
+	var beside := Node3D.new()
+	beside.position = Vector3(8.0, 0.0, 2.0)
+	var other := MeshInstance3D.new()
+	var other_mesh := BoxMesh.new()
+	other_mesh.size = Vector3(1.0, 2.0, 1.0)
+	other.mesh = other_mesh
+	other.position = Vector3(0.0, 1.0, 0.0)
+	beside.add_child(other)
+	beside.add_to_group(&"cover_fade")
+	var fader := OcclusionFader.new()
+	add_child_autofree(camera)
+	add_child_autofree(focus)
+	add_child_autofree(tree)
+	add_child_autofree(beside)
+	add_child_autofree(fader)
+	var profile := CameraProfile.new()
+	profile.occlusion_fade_speed = 100.0
+	profile.cover_transparency = 0.5
+	fader.bind(camera, focus, profile)
+	fader._forced_samples = PackedVector3Array([Vector3(0.0, 1.2, -3.0)])
+	fader._process(1.0)
+	assert_almost_eq(leaves.transparency, 0.5, 0.001)
+	assert_eq(other.transparency, 0.0)
+
+
+func test_cover_stays_solid_with_no_enemy() -> void:
+	var camera := Camera3D.new()
+	camera.position = Vector3(0.0, 4.0, 8.0)
+	var focus := Node3D.new()
+	var box := _box("Cover", Vector3(0.0, 1.5, 2.0), Vector3(2.0, 3.0, 1.0))
+	box.add_to_group(&"cover_fade")
+	box.transparency = 0.5
+	var fader := OcclusionFader.new()
+	add_child_autofree(camera)
+	add_child_autofree(focus)
+	add_child_autofree(fader)
+	var profile := CameraProfile.new()
+	profile.occlusion_fade_speed = 100.0
+	fader.bind(camera, focus, profile)
+	fader._process(1.0)
+	assert_eq(box.transparency, 0.0)
+
+
 func _box(node_name: String, at: Vector3, size: Vector3) -> MeshInstance3D:
 	var mesh_node := MeshInstance3D.new()
 	mesh_node.name = node_name

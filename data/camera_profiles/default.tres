@@ -18,4 +18,5 @@ edge_pan_speed = 46.0
 key_pan_speed = 30.0
 bounds_margin = 6.0
 occluded_transparency = 0.75
+cover_transparency = 0.5
 occlusion_fade_speed = 6.0
