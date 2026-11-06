@@ -33,7 +33,9 @@ class_name MovementProfile extends Resource
 @export var dash_recharge := 2.6        # s to restore one charge when the other is still ready
 @export var dash_recharge_fast := 1.15  # s per charge once both are spent. Faster than waiting out two slow charges
 @export var dash_slide_grace := 0.34    # s after the burst where Ctrl still becomes the fast slide
-@export var dash_slide_seconds := 0.9   # s the dash-slide holds dash_speed before normal slide friction
+@export var dash_slide_seconds := 0.9   # s, longest dash-slide. A slower entry is shorter
+@export var dash_slide_keep := 0.55     # fraction of dash speed the slide is allowed to hold. It does not add speed
+@export var dash_slide_drag := 0.35     # fraction of slide friction while that short coast is still going
 
 @export_group("Slide")
 @export var slide_enter_speed := 4.0    # m/s needed to start a slide. A run is 6 m/s, so Ctrl while running slides

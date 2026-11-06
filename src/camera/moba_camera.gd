@@ -22,6 +22,9 @@ var _has_bounds := false
 var _drag := false
 var _drag_from := Vector2.ZERO
 var _presenting := false
+var _yaw := 0.0
+var _pitch_offset := 0.0
+var _orbit_character := false
 
 
 func set_presenting(on: bool) -> void:
@@ -111,23 +114,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_MIDDLE:
 		_drag = (event as InputEventMouseButton).pressed
 		_drag_from = (event as InputEventMouseButton).position
-		if _drag:
+		if _drag and not _presenting:
 			set_locked(false)
+			_orbit_character = Input.is_action_pressed(&"camera_lock")
+			_glue_orbit_to_character()
 		_mark_handled()
-	elif _drag and event is InputEventMouseMotion:
+	elif _drag and event is InputEventMouseMotion and not _presenting:
 		var motion := event as InputEventMouseMotion
-		var before: Variant = screen_to_ground(_drag_from)
-		var after: Variant = screen_to_ground(motion.position)
+		var tuned := _profile()
+		var step := deg_to_rad(tuned.orbit_deg_per_pixel)
+		_yaw -= motion.relative.x * step
+		_pitch_offset = clampf(_pitch_offset - motion.relative.y * tuned.orbit_deg_per_pixel, -14.0, 16.0)
 		_drag_from = motion.position
-		if before is Vector3 and after is Vector3:
-			var shift := (before as Vector3) - (after as Vector3)
-			shift.y = 0.0
-			_goal += shift
-			_focus += shift
-		else:
-			var fallback := Vector3(-motion.relative.x, 0.0, -motion.relative.y) * 0.03
-			_goal += fallback
-			_focus += fallback
+		_orbit_character = Input.is_action_pressed(&"camera_lock")
+		_glue_orbit_to_character()
 		_mark_handled()
 
 
@@ -151,7 +151,9 @@ func _process(delta: float) -> void:
 			var step := velocity * delta
 			_goal += step
 			_focus += step
-	if _locked and _has_target():
+	if _drag and _orbit_character:
+		_glue_orbit_to_character()
+	elif _locked and _has_target():
 		var origin := _target.get_global_transform_interpolated().origin
 		_goal.x = origin.x
 		_goal.y = origin.y
@@ -177,10 +179,11 @@ func _apply_rig() -> void:
 	if camera == null:
 		return
 	var tuned := _profile()
-	var pitch := deg_to_rad(tuned.pitch_deg)
+	var pitch := deg_to_rad(clampf(tuned.pitch_deg + _pitch_offset, 32.0, 74.0))
 	camera.fov = tuned.fov_deg
 	camera.position = Vector3(0.0, _distance * sin(pitch), _distance * cos(pitch))
 	camera.rotation = Vector3(-pitch, 0.0, 0.0)
+	rotation.y = _yaw
 
 
 func _nudge_zoom(sign: float) -> void:
@@ -203,7 +206,22 @@ func _pan_velocity() -> Vector3:
 	if key != Vector3.ZERO:
 		velocity += key.normalized() * tuned.key_pan_speed
 	velocity += _edge_velocity()
-	return velocity
+	return _along_view(velocity)
+
+
+func _along_view(direction: Vector3) -> Vector3:
+	# direction.x is screen-right, direction.z is screen-down. After a yaw, those follow the camera.
+	if direction.length_squared() < 0.0001:
+		return direction
+	var right := global_basis.x
+	var forward := -global_basis.z
+	right.y = 0.0
+	forward.y = 0.0
+	if right.length_squared() < 0.0001 or forward.length_squared() < 0.0001:
+		return direction
+	right = right.normalized()
+	forward = forward.normalized()
+	return right * direction.x - forward * direction.z
 
 
 func _edge_velocity() -> Vector3:
@@ -243,6 +261,37 @@ func _clamp_xz(point: Vector3) -> Vector3:
 	point.x = clampf(point.x, min_corner.x, max_corner.x)
 	point.z = clampf(point.z, min_corner.z, max_corner.z)
 	return point
+
+
+func _glue_orbit_to_character() -> void:
+	if not _orbit_character or not _has_target():
+		return
+	var origin := _target.get_global_transform_interpolated().origin
+	_goal = origin
+	_focus = origin
+	global_position = _focus
+
+
+func planar_forward() -> Vector3:
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return Vector3(0.0, 0.0, -1.0)
+	return forward.normalized()
+
+
+func planar_right() -> Vector3:
+	var right := global_basis.x
+	right.y = 0.0
+	if right.length_squared() < 0.0001:
+		return Vector3(1.0, 0.0, 0.0)
+	return right.normalized()
+
+
+func follow_origin() -> Vector3:
+	if _has_target():
+		return _target.global_position
+	return _focus
 
 
 func _has_target() -> bool:

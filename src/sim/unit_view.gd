@@ -32,7 +32,8 @@ func _attach_character(path: String) -> bool:
 	if model == null:
 		return false
 	var box := ArtDressing._bounds(model)
-	var scale := 1.8 / maxf(box.size.y, 0.001)
+	# A little taller than the 1.8 m capsule so the hero reads at this camera.
+	var scale := 2.08 / maxf(box.size.y, 0.001)
 	var root := Node3D.new()
 	root.name = "ModelRoot"
 	# glTF faces +Z. Gameplay faces −Z, so turn the visual around once.

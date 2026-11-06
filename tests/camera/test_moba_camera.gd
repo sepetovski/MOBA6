@@ -96,6 +96,18 @@ func test_arrow_pan_moves_only_when_unlocked() -> void:
 	assert_lt(cam.global_position.x, -10.0)
 
 
+func test_free_pan_follows_the_camera_yaw() -> void:
+	var cam := _camera()
+	cam.set_locked(false)
+	cam._yaw = PI * 0.5
+	cam._apply_rig()
+	Input.action_press(&"camera_pan_left")
+	cam._process(0.5)
+	Input.action_release(&"camera_pan_left")
+	assert_gt(cam.global_position.z, 10.0)
+	assert_almost_eq(cam.global_position.x, 0.0, 0.5)
+
+
 func test_follow_eases_toward_the_target() -> void:
 	var cam := _camera()
 	var target := Node3D.new()
@@ -106,6 +118,50 @@ func test_follow_eases_toward_the_target() -> void:
 	assert_almost_eq(cam.global_position.x, 10.0, 0.2)
 	assert_almost_eq(cam.global_position.z, -4.0, 0.2)
 	assert_almost_eq(cam.global_position.y, 1.9, 0.2)
+
+
+func test_middle_mouse_orbits_without_moving_the_focus() -> void:
+	var cam := _camera()
+	cam.focus_on(Vector3.ZERO, true)
+	cam._process(0.01)
+	cam._unhandled_input(_middle(true, Vector2(400, 300)))
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(520, 300)
+	motion.relative = Vector2(120, 0)
+	cam._unhandled_input(motion)
+	cam._process(0.01)
+	assert_false(cam.is_locked())
+	assert_almost_eq(cam.global_position.x, 0.0, 0.05)
+	assert_almost_eq(cam.global_position.z, 0.0, 0.05)
+	assert_gt(absf(cam.camera.global_position.x), 1.0)
+
+
+func test_holding_y_orbits_around_the_character() -> void:
+	var cam := _camera()
+	cam.focus_on(Vector3(8.0, 0.0, 0.0), true)
+	cam.set_locked(false)
+	var target := Node3D.new()
+	add_child_autofree(target)
+	target.position = Vector3(-6.0, 0.0, 3.0)
+	cam.follow(target)
+	Input.action_press(&"camera_lock")
+	cam._unhandled_input(_middle(true, Vector2(200, 200)))
+	var motion := InputEventMouseMotion.new()
+	motion.position = Vector2(280, 200)
+	motion.relative = Vector2(80, 0)
+	cam._unhandled_input(motion)
+	cam._process(0.05)
+	Input.action_release(&"camera_lock")
+	assert_almost_eq(cam.global_position.x, -6.0, 0.2)
+	assert_almost_eq(cam.global_position.z, 3.0, 0.2)
+
+
+func _middle(pressed: bool, at: Vector2) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_MIDDLE
+	event.pressed = pressed
+	event.position = at
+	return event
 
 
 func _camera() -> MobaCamera:

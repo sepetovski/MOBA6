@@ -12,6 +12,8 @@ enum Phase { MENU, WAIT, FLYOVER, WEST, EAST, COUNTDOWN, PLAY, RESULTS }
 const FLY_SECONDS := 6.2
 const SIDE_SECONDS := 2.5
 
+var _span := 40.0
+
 var _camera: MobaCamera
 var _sim: Simulation
 var _phase := Phase.MENU
@@ -31,6 +33,21 @@ var _count_label: Label
 var _results: Control
 var _result_title: Label
 var _result_body: Label
+var _role := "melee"
+var _hero_id := "gladiator"
+var _hero_box: VBoxContainer
+var _melee_button: Button
+var _ranged_button: Button
+
+const _PICK_PATH := "user://hero_pick.cfg"
+
+
+func set_arena_span(apothem: float) -> void:
+	_span = maxf(apothem, 20.0)
+
+
+func chosen_hero_id() -> String:
+	return _hero_id
 
 
 func open_menu(camera: MobaCamera) -> void:
@@ -92,15 +109,16 @@ func _process(delta: float) -> void:
 		Phase.FLYOVER:
 			var t := clampf(_time / FLY_SECONDS, 0.0, 1.0)
 			var eased := t * t * (3.0 - 2.0 * t)
-			_camera.present(Vector3(lerpf(-34.0, 34.0, eased), 0.0, 2.0), 46.0, false)
+			var end := _span * 0.82
+			_camera.present(Vector3(lerpf(-end, end, eased), 0.0, 2.0), maxf(46.0, _span * 1.05), false)
 			if _time >= FLY_SECONDS:
 				_enter_side(true)
 		Phase.WEST:
-			_camera.present(Vector3(-41.0, 0.0, 0.0), 22.0, false)
+			_camera.present(Vector3(-_span * 0.92, 0.0, 0.0), 26.0, false)
 			if _time >= SIDE_SECONDS:
 				_enter_side(false)
 		Phase.EAST:
-			_camera.present(Vector3(41.0, 0.0, 0.0), 22.0, false)
+			_camera.present(Vector3(_span * 0.92, 0.0, 0.0), 26.0, false)
 			if _time >= SIDE_SECONDS:
 				_enter_countdown()
 		Phase.COUNTDOWN:
@@ -239,26 +257,116 @@ func _build() -> void:
 
 
 func _build_menu() -> void:
-	var box := _stack(_menu, 420.0)
-	box.add_child(_text("Gladiator Arena", 52, Color(0.98, 0.95, 0.86)))
-	var sub := _text("A forest ring. Six a side.", 20, Color(0.9, 0.88, 0.78))
-	box.add_child(sub)
+	var box := _stack(_menu, 460.0)
+	box.add_child(_text("Gladiator Arena", 44, Color(0.98, 0.95, 0.86)))
+	box.add_child(_text("Pick how you fight, then play.", 18, Color(0.9, 0.88, 0.78)))
+	var roles := HBoxContainer.new()
+	roles.alignment = BoxContainer.ALIGNMENT_CENTER
+	roles.add_theme_constant_override("separation", 12)
+	_melee_button = Button.new()
+	_melee_button.text = "Melee"
+	_melee_button.custom_minimum_size = Vector2(160, 44)
+	_ranged_button = Button.new()
+	_ranged_button.text = "Ranged"
+	_ranged_button.custom_minimum_size = Vector2(160, 44)
+	_melee_button.pressed.connect(func() -> void: _pick_role("melee"))
+	_ranged_button.pressed.connect(func() -> void: _pick_role("ranged"))
+	roles.add_child(_melee_button)
+	roles.add_child(_ranged_button)
+	box.add_child(roles)
+	_hero_box = VBoxContainer.new()
+	_hero_box.add_theme_constant_override("separation", 8)
+	box.add_child(_hero_box)
 	box.add_child(_button("Play", func() -> void: play_requested.emit()))
-	box.add_child(_button("Options", func() -> void:
+	box.add_child(_button("Settings", func() -> void:
 		_menu.visible = false
 		_options.visible = true
 	))
+	_load_pick()
+	_paint_pick()
 
 
 func _build_options() -> void:
-	var box := _stack(_options, 560.0)
-	box.add_child(_text("Options", 40, Color(0.98, 0.95, 0.86)))
-	var body := _text("", 18, Color(0.93, 0.91, 0.84))
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(520, 180)
-	body.text = "Right-click moves. Hold to steer.\nSpace jumps. Near a rock it grabs the ledge.\nShift dashes. You have two. One refills on its own. Spend both and they come back faster.\nCtrl after a dash slides and keeps that speed.\nCtrl while running also slides."
-	box.add_child(body)
-	box.add_child(_button("Back", func() -> void: _show_menu()))
+	var panel := SettingsPanel.new()
+	panel.back_requested.connect(_show_menu)
+	_options.add_child(panel)
+
+
+func _pick_role(role: String) -> void:
+	_role = "ranged" if role == "ranged" else "melee"
+	var ids := HeroCatalog.ids_for_role(_role)
+	if ids.is_empty():
+		return
+	if ids.find(_hero_id) < 0:
+		_hero_id = ids[0]
+	_save_pick()
+	_paint_pick()
+
+
+func _pick_hero(id: String) -> void:
+	var hero := HeroCatalog.by_id(StringName(id))
+	if hero == null:
+		return
+	_hero_id = String(hero.id)
+	_role = HeroCatalog.role_name(hero)
+	_save_pick()
+	_paint_pick()
+
+
+func _paint_pick() -> void:
+	if _melee_button == null or _hero_box == null:
+		return
+	_mark_choice(_melee_button, _role != "ranged")
+	_mark_choice(_ranged_button, _role == "ranged")
+	for child in _hero_box.get_children():
+		_hero_box.remove_child(child)
+		child.free()
+	for id in HeroCatalog.ids_for_role(_role):
+		var hero := HeroCatalog.by_id(StringName(id))
+		var button := Button.new()
+		button.text = "%s\n%s" % [hero.display_name, HeroCatalog.blurb(id)]
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.custom_minimum_size = Vector2(420, 58)
+		button.pressed.connect(_pick_hero.bind(id))
+		_mark_choice(button, id == _hero_id)
+		_hero_box.add_child(button)
+
+
+func _mark_choice(button: Button, selected: bool) -> void:
+	var box := StyleBoxFlat.new()
+	box.set_corner_radius_all(8)
+	box.set_border_width_all(2)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	if selected:
+		box.bg_color = Color(0.34, 0.42, 0.18, 0.96)
+		box.border_color = Color(0.95, 0.84, 0.4)
+		button.add_theme_color_override("font_color", Color(1.0, 0.96, 0.82))
+	else:
+		box.bg_color = Color(0.12, 0.14, 0.11, 0.9)
+		box.border_color = Color(0.45, 0.42, 0.32)
+		button.add_theme_color_override("font_color", Color(0.82, 0.8, 0.72))
+	button.add_theme_stylebox_override("normal", box)
+	button.add_theme_stylebox_override("hover", box)
+	button.add_theme_stylebox_override("pressed", box)
+
+
+func _load_pick() -> void:
+	var file := ConfigFile.new()
+	if file.load(_PICK_PATH) != OK:
+		return
+	_role = str(file.get_value("pick", "role", "melee"))
+	_hero_id = str(file.get_value("pick", "hero", "gladiator"))
+	_pick_role(_role)
+
+
+func _save_pick() -> void:
+	var file := ConfigFile.new()
+	file.set_value("pick", "role", _role)
+	file.set_value("pick", "hero", _hero_id)
+	file.save(_PICK_PATH)
 
 
 func _build_banner(root: Control) -> void:

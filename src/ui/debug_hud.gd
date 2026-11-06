@@ -9,6 +9,7 @@ var _plates: Array[Control] = []
 var _units: Array[SimUnit] = []
 var _help: Label
 var _readout: Label
+var _ammo: Label
 var _score_panel: PanelContainer
 var _kda_numbers: Label
 var _kda_detail: Label
@@ -36,7 +37,7 @@ var _last_hit: Dictionary = {}
 var _map: Control
 var _map_dots: Array[ColorRect] = []
 const _MAP_SIZE := 168.0
-const _MAP_HALF := 42.0
+const _MAP_HALF := 72.0
 var show_chrome := true
 var show_result := true
 var _dash_fills: Array[ColorRect] = []
@@ -65,6 +66,13 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_readout.add_theme_font_size_override("font_size", 18)
 	add_child(_readout)
+	_ammo = Label.new()
+	_ammo.name = "AmmoCursor"
+	_ammo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ammo.add_theme_font_size_override("font_size", 22)
+	_ammo.add_theme_color_override("font_color", Color(0.96, 0.94, 0.82))
+	_ammo.z_index = 30
+	add_child(_ammo)
 	_build_score_chip()
 	_build_clock()
 	_build_board()
@@ -123,6 +131,7 @@ func _process(delta: float) -> void:
 	_cheats()
 	_fly(delta)
 	_apply_chrome()
+	_update_ammo()
 	_update_plates()
 	_update_score()
 	_readout.text = _status()
@@ -174,7 +183,7 @@ func _status() -> String:
 	elif _sim.get_match_state() == Match.State.SETUP:
 		state_name = "setup"
 	var camera_mode := "LOCKED" if _camera.is_locked() else "FREE"
-	var camera_hint := "Y lock" if _camera.is_locked() else "edge or middle-mouse pans, Y locks"
+	var camera_hint := "middle-mouse orbits, hold Y to orbit you" if _camera.is_locked() else "middle-mouse orbits, Y locks"
 	var body := "FPS %.0f\ntick %d\n%s  %.1f s\nCamera %s  (%s)\nTAB scoreboard" % [
 		Engine.get_frames_per_second(), _sim.tick, state_name, _sim.get_countdown_seconds(), camera_mode, camera_hint
 	]
@@ -473,7 +482,7 @@ func _build_player_bar() -> void:
 		cover.position = origin
 		cover.size = Vector2(78, 0)
 		inner.add_child(cover)
-		var key := _text(["Q", "W"][slot], 22, Color(0.96, 0.94, 0.88))
+		var key := _text(ControlBindings.text_for("ability_1" if slot == 0 else "ability_2"), 22, Color(0.96, 0.94, 0.88))
 		key.position = origin + Vector2(8, 6)
 		inner.add_child(key)
 		var time := _text("ready", 14, Color(0.9, 0.88, 0.7))
@@ -540,6 +549,28 @@ func _apply_chrome() -> void:
 		_map.visible = show_chrome
 	if _help != null and not show_chrome:
 		_help.visible = false
+	if _ammo != null and not show_chrome:
+		_ammo.visible = false
+
+
+func _update_ammo() -> void:
+	if _ammo == null:
+		return
+	_ammo.visible = show_chrome
+	if not show_chrome or _sim == null:
+		return
+	var human := _sim.get_human()
+	if human == null or human.combat == null:
+		_ammo.visible = false
+		return
+	if human.combat.reloading():
+		_ammo.text = "Reload"
+		_ammo.add_theme_color_override("font_color", Color(0.95, 0.55, 0.28))
+	else:
+		_ammo.text = "%d/%d" % [human.combat.rounds(), human.combat.capacity()]
+		_ammo.add_theme_color_override("font_color", Color(0.96, 0.94, 0.82))
+	var mouse := get_viewport().get_mouse_position()
+	_ammo.position = mouse + Vector2(16, 18)
 
 
 func _build_board() -> void:

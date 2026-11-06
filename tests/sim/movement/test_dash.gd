@@ -1,7 +1,7 @@
 extends GutTest
 
 ## Shift spends one of two charges. One missing charge refills slowly.
-## Both missing refill faster. Crouch during the burst slides without losing that speed.
+## Both missing refill faster. A dash into crouch slides, but only at a fraction of dash speed.
 
 
 func test_two_dashes_refill_faster_than_one() -> void:
@@ -19,6 +19,8 @@ func test_dash_then_crouch_keeps_speed() -> void:
 	profile.dash_speed = 10.0
 	profile.dash_duration = 0.3
 	profile.dash_slide_seconds = 1.0
+	profile.dash_slide_keep = 0.55
+	profile.dash_slide_drag = 0.2
 	profile.max_speed_cap = 16.0
 	var unit := harness.spawn_unit(world, Vector3(-6, 0.05, 0), RID(), profile)
 	unit.rotation.y = -PI * 0.5
@@ -36,7 +38,8 @@ func test_dash_then_crouch_keeps_speed() -> void:
 			continue
 		var velocity: Vector3 = sample["velocity"]
 		var speed := Vector2(velocity.x, velocity.z).length()
-		assert_gte(speed, 9.0, "coast speed %.2f at frame %d" % [speed, frame])
+		assert_gte(speed, 4.0, "coast speed %.2f at frame %d" % [speed, frame])
+		assert_lte(speed, 7.0, "slide should not keep dash speed, got %.2f" % speed)
 		assert_eq(int(sample["state"]), int(MovementMotor.State.SLIDING), "frame %d" % frame)
 		saw_slide = true
 	assert_true(saw_slide, "the dash should have become a slide")

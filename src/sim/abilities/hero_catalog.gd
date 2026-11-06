@@ -8,12 +8,54 @@ static func for_slot(slot: int) -> HeroDefinition:
 	return roster[index]
 
 
+static func by_id(id: StringName) -> HeroDefinition:
+	for hero in [gladiator(), slinger(), skirmisher()]:
+		if hero.id == id:
+			return hero
+	return null
+
+
+static func resolve(slot: int, human: bool, hero_id: String) -> HeroDefinition:
+	if human and not hero_id.is_empty():
+		var picked := by_id(StringName(hero_id))
+		if picked != null:
+			return picked
+	return for_slot(slot)
+
+
+static func role_name(hero: HeroDefinition) -> String:
+	if hero != null and hero.stats != null and hero.stats.attack == UnitStats.Attack.RANGED:
+		return "ranged"
+	return "melee"
+
+
+static func ids_for_role(role: String) -> PackedStringArray:
+	var ids := PackedStringArray()
+	for hero in [gladiator(), skirmisher(), slinger()]:
+		if role_name(hero) == role:
+			ids.append(String(hero.id))
+	return ids
+
+
+static func blurb(id: String) -> String:
+	match id:
+		"gladiator":
+			return "Melee. Dash Strike and Cleave."
+		"skirmisher":
+			return "Melee. Lunge and Whirl."
+		"slinger":
+			return "Ranged. Bomb and a faster shot."
+	return ""
+
+
 static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 18.0
-	hero.stats.attack_range = 4.2
-	hero.stats.attack_interval = 0.8
+	hero.stats.attack_damage = 16.0
+	hero.stats.attack_range = 3.4
+	hero.stats.attack_interval = 0.48
+	hero.stats.magazine = 8
+	hero.stats.reload_seconds = 1.7
 	hero.abilities = [
 		_slash(&"dash_strike", "Dash Strike", 24.0, 2.4, 6.5, 0.2, 6.0),
 		_kind(&"cleave", "Cleave", AbilityDefinition.Kind.SLASH, 16.0, 2.6, 4.0),
@@ -24,10 +66,12 @@ static func gladiator() -> HeroDefinition:
 static func slinger() -> HeroDefinition:
 	var hero := _base(&"slinger", "Slinger")
 	hero.stats.attack = UnitStats.Attack.RANGED
-	hero.stats.attack_damage = 12.0
-	hero.stats.attack_range = 13.0
-	hero.stats.attack_interval = 0.95
-	hero.stats.projectile_speed = 20.0
+	hero.stats.attack_damage = 7.0
+	hero.stats.attack_range = 16.0
+	hero.stats.attack_interval = 0.22
+	hero.stats.projectile_speed = 26.0
+	hero.stats.magazine = 18
+	hero.stats.reload_seconds = 1.35
 	hero.abilities = [
 		_bomb(),
 		_dash_only(&"backstep", "Backstep", 5.0, 0.16, 5.0, true),
@@ -38,9 +82,11 @@ static func slinger() -> HeroDefinition:
 static func skirmisher() -> HeroDefinition:
 	var hero := _base(&"skirmisher", "Skirmisher")
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 11.0
-	hero.stats.attack_range = 3.8
-	hero.stats.attack_interval = 0.55
+	hero.stats.attack_damage = 12.0
+	hero.stats.attack_range = 3.2
+	hero.stats.attack_interval = 0.4
+	hero.stats.magazine = 10
+	hero.stats.reload_seconds = 1.45
 	hero.abilities = [
 		_slash(&"lunge", "Lunge", 14.0, 1.6, 7.0, 0.18, 5.0),
 		_kind(&"whirl", "Whirl", AbilityDefinition.Kind.WHIRL, 14.0, 2.6, 6.0),

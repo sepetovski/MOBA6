@@ -252,6 +252,21 @@ func _apply_intent(intent: MovementIntent) -> void:
 		_steering = false
 		intent.has_move_target = false
 		intent.steering = false
+	# The navmesh is the ground. On a box, keep walking straight at the order so you can step off.
+	if can_move and _body.is_on_floor() and _body.global_position.y > profile.step_height * 0.6:
+		var aim := Vector3.ZERO
+		var aimed := false
+		if intent.has_move_target:
+			aim = intent.move_target
+			aimed = true
+		elif _has_goal:
+			aim = _goal
+			aimed = true
+		if aimed:
+			intent.steer_point = aim
+			intent.steering = true
+			intent.has_move_target = false
+			_clear_goal(false)
 	if intent.steering and can_move:
 		if _has_goal:
 			_clear_goal(false)
@@ -370,7 +385,12 @@ func _begin_wall_jump(wall: Vector3) -> bool:
 	_takeoff_height = profile.wall_jump_height
 	_wall_push = wall * profile.wall_jump_push
 	var along := _flat_velocity() - wall * _flat_velocity().dot(wall)
-	_set_horizontal(along * 0.35 + _wall_push)
+	if along.length_squared() < 1.0:
+		var face := _facing()
+		along = face - wall * face.dot(wall)
+		if along.length_squared() > 0.01:
+			along = along.normalized() * profile.wall_jump_push * 0.65
+	_set_horizontal(along + _wall_push)
 	_air_reference_speed = maxf(get_horizontal_speed(), profile.wall_jump_push)
 	_air_jumps_left = profile.air_jumps
 	_jumped_this_step = true
@@ -455,11 +475,14 @@ func _try_dash_slide(intent: MovementIntent) -> bool:
 func _begin_coast_slide() -> void:
 	_dash_time = 0.0
 	_dash_grace = 0.0
-	_coast_left = profile.dash_slide_seconds
+	var entry := get_horizontal_speed()
+	var held := minf(entry, profile.dash_speed * profile.dash_slide_keep)
+	_slide_speed = maxf(held, profile.slide_min_speed)
+	var ratio := clampf(entry / maxf(profile.dash_speed, 0.01), 0.4, 1.0)
+	_coast_left = profile.dash_slide_seconds * ratio
 	if _dash_dir.length_squared() < 0.01:
 		_dash_dir = _facing()
 	_slide_dir = _dash_dir
-	_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
 	_set_capsule(profile.height_slide)
 	_set_state(State.SLIDING)
 
@@ -596,11 +619,11 @@ func _apply_air(intent: MovementIntent, dt: float) -> void:
 
 
 func _apply_slide(intent: MovementIntent, dt: float) -> void:
+	var drag := profile.slide_friction
 	if _coast_left > 0.0:
-		# A dash into crouch keeps the burst. Friction starts only after that window.
-		_slide_speed = minf(profile.dash_speed, profile.max_speed_cap)
-	else:
-		_slide_speed -= profile.slide_friction * dt
+		# The coast keeps a fraction of the speed you already had. It does not jump up to dash speed.
+		drag *= profile.dash_slide_drag
+	_slide_speed -= drag * dt
 	if _coast_left <= 0.0 and _body.is_on_floor():
 		var normal := _body.get_floor_normal()
 		var slope := acos(clampf(normal.dot(Vector3.UP), -1.0, 1.0))

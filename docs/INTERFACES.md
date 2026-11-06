@@ -104,6 +104,7 @@ func clear() -> void
 | `CROUCH_SLIDE`, pressed | `crouch_slide_pressed` = true for that tick, `crouch_slide_held` = true until released |
 | `CROUCH_SLIDE`, released | `crouch_slide_held` = false |
 | `DASH`, pressed | `dash_pressed` = true for that tick. Shift. Two charges live on `MovementMotor` |
+| `FIRE`, pressed | Left click. `Combat.set_trigger(true)` and aim at the point. Release sets the trigger off. Ammo is a `Magazine` |
 
 ## Camera and input (M2)
 

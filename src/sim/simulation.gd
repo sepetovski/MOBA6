@@ -312,12 +312,14 @@ func _spawn_roster() -> void:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.A and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.A, slot, controller)
+		var west_hero := HeroCatalog.resolve(slot, controller == UnitState.Controller.HUMAN, _config.human_hero_id)
+		spawn_unit(west_hero, Team.Id.A, slot, controller)
 	for slot in 6:
 		var controller := UnitState.Controller.BOT
 		if _config.human_team == Team.Id.B and _config.human_slot == slot:
 			controller = UnitState.Controller.HUMAN
-		spawn_unit(HeroCatalog.for_slot(slot), Team.Id.B, slot, controller)
+		var east_hero := HeroCatalog.resolve(slot, controller == UnitState.Controller.HUMAN, _config.human_hero_id)
+		spawn_unit(east_hero, Team.Id.B, slot, controller)
 
 
 func deal_damage(source_id: int, target_id: int, amount: float) -> void:
@@ -573,9 +575,7 @@ func _keep_inside() -> void:
 		if not unit.state.alive:
 			continue
 		var point := unit.global_position
-		var in_tunnel := absf(point.z) <= 4.2 and absf(point.x) >= 38.0 and absf(point.x) <= 49.2
-		var inside := in_tunnel or _info.contains_xz(Vector2(point.x, point.z))
-		if inside and point.y > -1.0 and point.y < 8.0:
+		if _info.allows(point):
 			continue
 		unit.place_at(unit.spawn_transform)
 		unit.motor.reset_motion()

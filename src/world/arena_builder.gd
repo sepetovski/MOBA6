@@ -381,14 +381,9 @@ static func _environment() -> WorldEnvironment:
 	environment.tonemap_exposure = 1.06
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	environment.ambient_light_energy = 0.82
-	environment.glow_enabled = true
-	environment.glow_intensity = 0.32
-	environment.glow_strength = 0.65
-	environment.glow_bloom = 0.1
-	environment.volumetric_fog_enabled = true
-	environment.volumetric_fog_density = 0.0022
-	environment.volumetric_fog_albedo = Color(0.82, 0.88, 0.74)
-	environment.volumetric_fog_length = 70.0
+	# Volumetric fog and heavy bloom light the whole view every frame and spin laptop fans.
+	environment.glow_enabled = false
+	environment.volumetric_fog_enabled = false
 	var world := WorldEnvironment.new()
 	world.name = "WorldEnvironment"
 	world.environment = environment
@@ -399,11 +394,10 @@ static func _sun() -> DirectionalLight3D:
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-36, -28, 0)
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 110.0
+	sun.directional_shadow_max_distance = 64.0
 	sun.light_color = Color(1.0, 0.95, 0.82)
-	sun.light_energy = 1.4
-	sun.light_volumetric_fog_energy = 1.7
-	sun.shadow_blur = 1.1
+	sun.light_energy = 1.25
+	sun.shadow_blur = 0.0
 	return sun
 
 static func _edge_kind(a: Vector2, b: Vector2, apothem: float) -> String:

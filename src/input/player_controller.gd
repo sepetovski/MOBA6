@@ -23,6 +23,8 @@ var _last_steer := Vector3.ZERO
 var _cursor := Vector2.ZERO
 var _cursor_valid := false
 var _crouched := false
+var _firing := false
+var _wasd_moving := false
 var face_cursor := false
 
 
@@ -72,6 +74,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"dash"):
 		_emit(Command.Kind.DASH, _ground_or_zero(), true)
 		_mark_handled()
+	elif event.is_action_pressed(&"fire"):
+		_firing = true
+		_emit(Command.Kind.FIRE, _ground_or_zero(), true)
+		_mark_handled()
+	elif event.is_action_released(&"fire"):
+		_firing = false
+		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
+		_mark_handled()
 	elif event.is_action_pressed(&"ability_1"):
 		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 0)
 		_mark_handled()
@@ -86,6 +96,8 @@ func _physics_process(delta: float) -> void:
 		var aim: Variant = _ground_point()
 		if aim is Vector3:
 			_emit(Command.Kind.AIM, aim, true)
+	if enabled:
+		_drive_wasd()
 	if not enabled:
 		_clear_hold()
 		return
@@ -147,10 +159,37 @@ func _on_crouch_release() -> void:
 	_emit(Command.Kind.CROUCH_SLIDE, _ground_or_zero(), false)
 
 
+func _drive_wasd() -> void:
+	if _camera == null or not InputMap.has_action(&"move_forward"):
+		return
+	var wish := Vector3.ZERO
+	var forward := _camera.planar_forward()
+	var right := _camera.planar_right()
+	if Input.is_action_pressed(&"move_forward"):
+		wish += forward
+	if Input.is_action_pressed(&"move_back"):
+		wish -= forward
+	if Input.is_action_pressed(&"move_right"):
+		wish += right
+	if Input.is_action_pressed(&"move_left"):
+		wish -= right
+	if wish.length_squared() < 0.01:
+		if _wasd_moving:
+			_wasd_moving = false
+			_emit(Command.Kind.STEER, _ground_or_zero(), false)
+		return
+	_wasd_moving = true
+	var point := _camera.follow_origin() + wish.normalized() * 10.0
+	_emit(Command.Kind.STEER, point, true)
+
+
 func _clear_hold() -> void:
 	_right_down = false
 	_held_time = 0.0
 	_steering = false
+	if _firing:
+		_firing = false
+		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
 
 
 func _emit(kind: Command.Kind, point: Vector3, pressed: bool, target_id := -1, slot := -1) -> void:

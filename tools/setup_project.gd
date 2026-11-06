@@ -6,6 +6,7 @@ extends SceneTree
 const ACTIONS := {
 	"move_click": "mouse_right",
 	"select": "mouse_left",
+	"fire": "mouse_left",
 	"jump": KEY_SPACE,
 	"crouch_slide": KEY_CTRL,
 	"dash": KEY_SHIFT,
@@ -15,6 +16,10 @@ const ACTIONS := {
 	"ability_3": KEY_E,
 	"ability_4": KEY_R,
 	"camera_lock": KEY_Y,
+	"move_forward": "none",
+	"move_back": "none",
+	"move_left": "none",
+	"move_right": "none",
 	"zoom_in": "wheel_up",
 	"zoom_out": "wheel_down",
 	"camera_pan_left": KEY_LEFT,
@@ -61,6 +66,10 @@ func _apply_display_and_physics() -> void:
 	ProjectSettings.set_setting("physics/common/physics_ticks_per_second", 60)
 	ProjectSettings.set_setting("physics/common/physics_interpolation", true)
 	ProjectSettings.set_setting("rendering/renderer/rendering_method", "forward_plus")
+	ProjectSettings.set_setting("application/run/max_fps", 60)
+	ProjectSettings.set_setting("display/window/vsync/vsync_mode", 1)
+	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/size", 1024)
+	ProjectSettings.set_setting("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", 0)
 	ProjectSettings.set_setting("navigation/3d/default_cell_size", 0.2)
 	ProjectSettings.set_setting("navigation/3d/default_cell_height", 0.1)
 
@@ -70,6 +79,9 @@ func _set_action(action: String, binding: Variant) -> void:
 		var key := InputEventKey.new()
 		key.physical_keycode = binding as Key
 		event = key
+	elif binding == "none":
+		ProjectSettings.set_setting("input/%s" % action, {"deadzone": 0.5, "events": []})
+		return
 	elif binding == "mouse_left":
 		event = _mouse(MOUSE_BUTTON_LEFT)
 	elif binding == "mouse_right":
