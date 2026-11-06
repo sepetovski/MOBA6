@@ -16,6 +16,10 @@ const ACTIONS := {
 	"ability_3": KEY_E,
 	"ability_4": KEY_R,
 	"camera_lock": KEY_Y,
+	"move_forward": "none",
+	"move_back": "none",
+	"move_left": "none",
+	"move_right": "none",
 	"zoom_in": "wheel_up",
 	"zoom_out": "wheel_down",
 	"camera_pan_left": KEY_LEFT,
@@ -75,6 +79,9 @@ func _set_action(action: String, binding: Variant) -> void:
 		var key := InputEventKey.new()
 		key.physical_keycode = binding as Key
 		event = key
+	elif binding == "none":
+		ProjectSettings.set_setting("input/%s" % action, {"deadzone": 0.5, "events": []})
+		return
 	elif binding == "mouse_left":
 		event = _mouse(MOUSE_BUTTON_LEFT)
 	elif binding == "mouse_right":

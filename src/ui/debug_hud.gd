@@ -482,7 +482,7 @@ func _build_player_bar() -> void:
 		cover.position = origin
 		cover.size = Vector2(78, 0)
 		inner.add_child(cover)
-		var key := _text(["Q", "W"][slot], 22, Color(0.96, 0.94, 0.88))
+		var key := _text(ControlBindings.text_for("ability_1" if slot == 0 else "ability_2"), 22, Color(0.96, 0.94, 0.88))
 		key.position = origin + Vector2(8, 6)
 		inner.add_child(key)
 		var time := _text("ready", 14, Color(0.9, 0.88, 0.7))

@@ -272,6 +272,28 @@ func _glue_orbit_to_character() -> void:
 	global_position = _focus
 
 
+func planar_forward() -> Vector3:
+	var forward := -global_basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return Vector3(0.0, 0.0, -1.0)
+	return forward.normalized()
+
+
+func planar_right() -> Vector3:
+	var right := global_basis.x
+	right.y = 0.0
+	if right.length_squared() < 0.0001:
+		return Vector3(1.0, 0.0, 0.0)
+	return right.normalized()
+
+
+func follow_origin() -> Vector3:
+	if _has_target():
+		return _target.global_position
+	return _focus
+
+
 func _has_target() -> bool:
 	return _target != null and is_instance_valid(_target)
 

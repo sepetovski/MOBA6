@@ -278,7 +278,7 @@ func _build_menu() -> void:
 	_hero_box.add_theme_constant_override("separation", 8)
 	box.add_child(_hero_box)
 	box.add_child(_button("Play", func() -> void: play_requested.emit()))
-	box.add_child(_button("Options", func() -> void:
+	box.add_child(_button("Settings", func() -> void:
 		_menu.visible = false
 		_options.visible = true
 	))
@@ -287,14 +287,9 @@ func _build_menu() -> void:
 
 
 func _build_options() -> void:
-	var box := _stack(_options, 560.0)
-	box.add_child(_text("Options", 40, Color(0.98, 0.95, 0.86)))
-	var body := _text("", 18, Color(0.93, 0.91, 0.84))
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(520, 180)
-	body.text = "Right-click moves. Hold to steer.\nLeft-click fires. Melee swings, ranged throws a ball. The number by the cursor is ammo.\nSpace jumps. Boxes and bridges are there to climb.\nShift dashes. You have two, and they come back slowly.\nCtrl after a dash is a short slide. It does not add speed."
-	box.add_child(body)
-	box.add_child(_button("Back", func() -> void: _show_menu()))
+	var panel := SettingsPanel.new()
+	panel.back_requested.connect(_show_menu)
+	_options.add_child(panel)
 
 
 func _pick_role(role: String) -> void:
