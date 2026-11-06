@@ -121,6 +121,7 @@ func set_bounds(bounds: AABB) -> void
 func focus_on(world_point: Vector3, instant := false) -> void
 func present(point: Vector3, distance: float, instant := false) -> void
 func set_presenting(on: bool) -> void
+func is_presenting() -> bool
 func screen_to_ground(screen_pos: Vector2) -> Variant
 
 class_name CursorPicker extends RefCounted

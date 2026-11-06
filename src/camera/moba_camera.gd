@@ -33,6 +33,10 @@ func set_presenting(on: bool) -> void:
 		_distance_target = _profile().distance
 
 
+func is_presenting() -> bool:
+	return _presenting
+
+
 func present(point: Vector3, distance: float, instant := false) -> void:
 	_presenting = true
 	_target = null

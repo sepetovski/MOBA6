@@ -67,8 +67,9 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
 | Melee magazine | swings | 8 and 10 | `src/sim/abilities/hero_catalog.gd` | Gladiator 8, Skirmisher 10. Reload 1.7 s and 1.45 s |
 | Ranged magazine | shots | 18 | `src/sim/abilities/hero_catalog.gd` | Slinger. Faster interval 0.22 s, 7 damage, reload 1.35 s |
-| Cover fade |  | 0.5 | `data/camera_profile.gd` | Trees and boxes hiding any character, including you. 0 is solid, 1 is invisible |
-| Cover fade speed | 1/s | 5 | `data/camera_profile.gd` | Half fade in about 0.1 s. The material is already blended, so this is not a shader load |
+| Cover fade |  | 0.75 | `data/camera_profile.gd` | Trees and boxes hiding any character, including you. 0 is solid, 1 is invisible |
+| Cover fade speed | 1/s | 5 | `data/camera_profile.gd` | Eases in about 0.15 s. The material stays on alpha hash, so this is not a shader load |
+| Cover hold | s | 0.2 | `data/camera_profile.gd` | Keeps the fade briefly so a camera twitch does not flash the tree solid |
 | Tree shot cover width |  | 0.7 | `src/world/art_dressing.gd` | Fraction of the canopy that stops a shot |
 | Tree shot cover height |  | 0.88 | `src/world/art_dressing.gd` | Fraction of the tree height that stops a shot |
 | Hero air control |  | 0.68 | `data/movement_profiles/gladiator.tres` | Steerable jumps |
