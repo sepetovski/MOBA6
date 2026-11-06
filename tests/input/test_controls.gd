@@ -35,6 +35,15 @@ func test_rebind_replaces_the_key_and_clears_the_old_owner() -> void:
 	ControlBindings.apply_preset("mouse")
 
 
+func test_cover_see_through_clamps() -> void:
+	var previous := GameSettings.cover_see_through
+	GameSettings.set_cover_see_through(0.4)
+	assert_almost_eq(GameSettings.cover_see_through, 0.4, 0.001)
+	GameSettings.set_cover_see_through(2.0)
+	assert_almost_eq(GameSettings.cover_see_through, 0.95, 0.001)
+	GameSettings.cover_see_through = previous
+
+
 func test_wasd_wish_follows_the_camera() -> void:
 	var forward := Vector3(0, 0, -1)
 	var right := Vector3(1, 0, 0)

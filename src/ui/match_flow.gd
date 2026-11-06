@@ -6,6 +6,7 @@ class_name MatchFlow extends CanvasLayer
 signal play_requested
 signal again_requested
 signal menu_requested
+signal gameplay_locked(open: bool)
 
 enum Phase { MENU, WAIT, FLYOVER, WEST, EAST, COUNTDOWN, PLAY, RESULTS }
 
@@ -41,6 +42,8 @@ var _ranged_button: Button
 var _record: Control
 var _record_body: Label
 var _filling := false
+var _settings: SettingsPanel
+var _settings_open := false
 
 
 func set_arena_span(apothem: float) -> void:
@@ -314,9 +317,54 @@ func _build_menu() -> void:
 
 
 func _build_options() -> void:
-	var panel := SettingsPanel.new()
-	panel.back_requested.connect(_show_menu)
-	_options.add_child(panel)
+	_settings = SettingsPanel.new()
+	_settings.back_requested.connect(_close_settings)
+	_options.add_child(_settings)
+
+
+func _input(event: InputEvent) -> void:
+	if not _escape_pressed(event):
+		return
+	if _settings != null and _settings.is_listening():
+		return
+	if _phase != Phase.PLAY and _phase != Phase.COUNTDOWN:
+		return
+	if _settings_open:
+		_close_settings()
+	else:
+		_open_settings()
+	get_viewport().set_input_as_handled()
+
+
+func _escape_pressed(event: InputEvent) -> bool:
+	if event.is_action_pressed(&"ui_cancel"):
+		return true
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		return key.pressed and not key.echo and key.physical_keycode == KEY_ESCAPE
+	return false
+
+
+func _open_settings() -> void:
+	_settings_open = true
+	_options.mouse_filter = Control.MOUSE_FILTER_STOP
+	_options.visible = true
+	gameplay_locked.emit(true)
+
+
+func _close_settings() -> void:
+	var was_open := _settings_open
+	_settings_open = false
+	_options.visible = false
+	_options.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _phase == Phase.MENU or _phase == Phase.WAIT:
+		_show_menu()
+		return
+	if _phase == Phase.RESULTS:
+		_hide_panels()
+		_results.visible = true
+	if was_open:
+		gameplay_locked.emit(false)
 
 
 func _build_record() -> void:

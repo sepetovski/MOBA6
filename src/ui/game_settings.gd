@@ -10,6 +10,8 @@ static var vsync := true
 static var shadows := true
 static var fullscreen := false
 static var scheme := "mouse"
+## 0 solid, 1 invisible. Negative until boot, so tests keep the camera profile value.
+static var cover_see_through := -1.0
 
 
 static func boot() -> void:
@@ -19,6 +21,7 @@ static func boot() -> void:
 		vsync = bool(file.get_value("graphics", "vsync", true))
 		shadows = bool(file.get_value("graphics", "shadows", true))
 		fullscreen = bool(file.get_value("graphics", "fullscreen", false))
+		cover_see_through = float(file.get_value("graphics", "cover_see_through", 0.75))
 		scheme = str(file.get_value("controls", "scheme", "mouse"))
 		ControlBindings.apply_preset(scheme if scheme == "wasd" else "mouse")
 		for action in ControlBindings.GAMEPLAY:
@@ -30,6 +33,7 @@ static func boot() -> void:
 				ControlBindings.set_event(action, event)
 	else:
 		scheme = "mouse"
+		cover_see_through = 0.75
 		ControlBindings.apply_preset("mouse")
 	apply_graphics()
 
@@ -40,6 +44,7 @@ static func save() -> void:
 	file.set_value("graphics", "vsync", vsync)
 	file.set_value("graphics", "shadows", shadows)
 	file.set_value("graphics", "fullscreen", fullscreen)
+	file.set_value("graphics", "cover_see_through", cover_see_through if cover_see_through >= 0.0 else 0.75)
 	file.set_value("controls", "scheme", scheme)
 	for action in ControlBindings.GAMEPLAY:
 		file.set_value("bindings", action, ControlBindings.encode(action))
@@ -73,6 +78,11 @@ static func set_shadows(on: bool) -> void:
 static func set_fullscreen(on: bool) -> void:
 	fullscreen = on
 	apply_graphics()
+	save()
+
+
+static func set_cover_see_through(value: float) -> void:
+	cover_see_through = clampf(value, 0.2, 0.95)
 	save()
 
 

@@ -148,8 +148,8 @@ func test_prepared_cover_fades_alpha_without_a_pipeline_switch() -> void:
 	OcclusionFader.prepare_cover(leaves)
 	var faded := leaves.get_surface_override_material(0) as StandardMaterial3D
 	assert_not_null(faded)
-	assert_eq(faded.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA_HASH)
-	assert_eq(faded.depth_draw_mode, BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY)
+	assert_eq(faded.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA)
+	assert_eq(faded.depth_draw_mode, BaseMaterial3D.DEPTH_DRAW_DISABLED)
 	assert_almost_eq(faded.albedo_color.a, 1.0, 0.001)
 	var fader := OcclusionFader.new()
 	add_child_autofree(camera)
@@ -206,6 +206,30 @@ func test_flyover_does_not_fade_cover() -> void:
 	rig.set_presenting(false)
 	fader._process(1.0)
 	assert_almost_eq(box.transparency, 0.75, 0.001)
+
+
+func test_settings_slider_overrides_the_profile() -> void:
+	var previous := GameSettings.cover_see_through
+	GameSettings.cover_see_through = 0.85
+	var camera := Camera3D.new()
+	camera.position = Vector3(0.0, 4.0, 8.0)
+	var focus := Node3D.new()
+	focus.position = Vector3(0.0, 0.0, -2.0)
+	var box := _box("Cover", Vector3(0.0, 1.5, 2.0), Vector3(2.0, 3.0, 1.0))
+	box.add_to_group(&"cover_fade")
+	var fader := OcclusionFader.new()
+	add_child_autofree(camera)
+	add_child_autofree(focus)
+	add_child_autofree(fader)
+	var profile := CameraProfile.new()
+	profile.cover_fade_speed = 100.0
+	profile.cover_transparency = 0.5
+	profile.sample_heights_m = PackedFloat32Array([1.0])
+	fader.bind(camera, focus, profile)
+	fader._process(1.0)
+	var faded := box.transparency
+	GameSettings.cover_see_through = previous
+	assert_almost_eq(faded, 0.85, 0.001)
 
 
 func _box(node_name: String, at: Vector3, size: Vector3) -> MeshInstance3D:

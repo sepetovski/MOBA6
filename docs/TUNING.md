@@ -70,8 +70,7 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Cover fade |  | 0.75 | `data/camera_profile.gd` | Trees and boxes hiding any character, including you. 0 is solid, 1 is invisible |
 | Cover fade speed | 1/s | 5 | `data/camera_profile.gd` | Eases in about 0.15 s. The material stays on alpha hash, so this is not a shader load |
 | Cover hold | s | 0.2 | `data/camera_profile.gd` | Keeps the fade briefly so a camera twitch does not flash the tree solid |
-| Tree shot cover width |  | 0.7 | `src/world/art_dressing.gd` | Fraction of the canopy that stops a shot |
-| Tree shot cover height |  | 0.88 | `src/world/art_dressing.gd` | Fraction of the tree height that stops a shot |
+| Tree shot cover pad | m | 0.45 | `src/world/art_dressing.gd` | Extra past the full canopy so an angled shot cannot slip through |
 | Hero air control |  | 0.68 | `data/movement_profiles/gladiator.tres` | Steerable jumps |
 | Hero vault / mantle time | s | 0.26 / 0.4 | `data/movement_profiles/gladiator.tres` | Quicker grab onto rocks |
 | Hero vault reach | m | 1.65 | `data/movement_profiles/gladiator.tres` | Easier to catch a ledge |

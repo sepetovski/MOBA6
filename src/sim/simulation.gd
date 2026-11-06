@@ -490,7 +490,7 @@ func _step_projectiles(dt: float) -> void:
 		if shot.mesh != null:
 			shot.mesh.global_position = shot.position
 		var spent := shot.position.distance_to(shot.origin) > 28.0
-		if not spent and _shot_hits_cover(previous, shot.position):
+		if not spent and _shot_hits_cover(previous, shot.position, shot.radius):
 			spent = true
 		if not spent:
 			for unit in get_units():
@@ -511,7 +511,7 @@ func _step_projectiles(dt: float) -> void:
 	_shots = keep
 
 
-func _shot_hits_cover(from: Vector3, to: Vector3) -> bool:
+func _shot_hits_cover(from: Vector3, to: Vector3, radius: float) -> bool:
 	if from.distance_squared_to(to) < 0.000001:
 		return false
 	var viewport := get_viewport()
@@ -520,14 +520,17 @@ func _shot_hits_cover(from: Vector3, to: Vector3) -> bool:
 	var world := viewport.find_world_3d()
 	if world == null:
 		return false
-	var query := PhysicsRayQueryParameters3D.create(from, to, GameConfig.LAYER_OCCLUDERS)
-	query.collide_with_areas = false
-	query.collide_with_bodies = true
-	var hit: Dictionary = world.direct_space_state.intersect_ray(query)
-	if hit.is_empty():
-		return false
-	var collider := hit.get("collider") as Node
-	return collider != null and collider.has_meta("shot_cover")
+	var shape := SphereShape3D.new()
+	shape.radius = maxf(radius, 0.2)
+	var params := PhysicsShapeQueryParameters3D.new()
+	params.shape = shape
+	params.transform = Transform3D(Basis.IDENTITY, from)
+	params.motion = to - from
+	params.collision_mask = GameConfig.LAYER_OCCLUDERS
+	params.collide_with_areas = false
+	params.collide_with_bodies = true
+	var fractions := world.direct_space_state.cast_motion(params)
+	return fractions.size() >= 2 and fractions[0] < 0.999
 
 
 func _revive_ready() -> void:

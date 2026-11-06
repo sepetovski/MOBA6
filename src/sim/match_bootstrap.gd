@@ -17,9 +17,11 @@ var _hud: DebugHud
 var _booting := false
 var _wired := false
 var _profile_saved := false
+var _settings_open := false
 
 
 func _ready() -> void:
+	GameSettings.boot()
 	var layout := MatchMap.prepare(load(LAYOUT) as ArenaLayout)
 	_arena = ArenaBuilder.build(layout, false)
 	add_child(_arena)
@@ -39,6 +41,7 @@ func _ready() -> void:
 	_flow.play_requested.connect(_on_play)
 	_flow.again_requested.connect(_on_again)
 	_flow.menu_requested.connect(_on_menu)
+	_flow.gameplay_locked.connect(_on_gameplay_locked)
 	if get_tree().has_meta(&"auto_play") and bool(get_tree().get_meta(&"auto_play")):
 		get_tree().set_meta(&"auto_play", false)
 		_on_play()
@@ -111,8 +114,7 @@ func _on_match_state(state: int) -> void:
 	if _simulation == null:
 		return
 	if state == Match.State.RUNNING:
-		if _player != null:
-			_player.enabled = true
+		_apply_player_enabled()
 		if _hud != null:
 			_hud.show_chrome = true
 		var human := _simulation.get_human()
@@ -130,6 +132,18 @@ func _on_match_state(state: int) -> void:
 			_profile_saved = true
 			ProfileStore.record_match(_simulation)
 		_flow.show_results(_simulation)
+
+
+func _on_gameplay_locked(open: bool) -> void:
+	_settings_open = open
+	_apply_player_enabled()
+
+
+func _apply_player_enabled() -> void:
+	if _player == null or _simulation == null:
+		return
+	var running := _simulation.get_match_state() == Match.State.RUNNING
+	_player.enabled = running and not _settings_open
 
 
 func _on_again() -> void:

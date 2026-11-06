@@ -8,6 +8,8 @@ var _fps_buttons: Array[Button] = []
 var _vsync_button: Button
 var _shadow_button: Button
 var _full_button: Button
+var _cover_slider: HSlider
+var _cover_label: Label
 var _bind_buttons: Dictionary = {}
 var _listen := ""
 var _armed := false
@@ -48,6 +50,17 @@ func _ready() -> void:
 	_full_button = _toggle("Fullscreen")
 	_full_button.pressed.connect(_on_fullscreen)
 	box.add_child(_full_button)
+	box.add_child(_title("Cover see-through", 16))
+	_cover_label = _title("How clear trees and boxes are when someone is behind them.", 14)
+	box.add_child(_cover_label)
+	_cover_slider = HSlider.new()
+	_cover_slider.min_value = 20.0
+	_cover_slider.max_value = 95.0
+	_cover_slider.step = 1.0
+	_cover_slider.custom_minimum_size = Vector2(420, 28)
+	_cover_slider.value_changed.connect(_on_cover)
+	box.add_child(_cover_slider)
+	box.add_child(_title("Esc opens this during a match. Drag the slider and look at a tree.", 14))
 	box.add_child(_title("Controls", 22))
 	var schemes := HBoxContainer.new()
 	schemes.add_theme_constant_override("separation", 8)
@@ -83,6 +96,10 @@ func _ready() -> void:
 	back.pressed.connect(func() -> void: back_requested.emit())
 	box.add_child(back)
 	_refresh()
+
+
+func is_listening() -> bool:
+	return not _listen.is_empty()
 
 
 func _process(_delta: float) -> void:
@@ -137,6 +154,11 @@ func _on_fullscreen() -> void:
 	_refresh()
 
 
+func _on_cover(value: float) -> void:
+	GameSettings.set_cover_see_through(value / 100.0)
+	_cover_label.text = "See-through    %d%%" % int(round(value))
+
+
 func _on_scheme(scheme: String) -> void:
 	GameSettings.use_scheme(scheme)
 	_listen = ""
@@ -158,6 +180,11 @@ func _refresh() -> void:
 	_vsync_button.text = "VSync    %s" % ("On" if GameSettings.vsync else "Off")
 	_shadow_button.text = "Shadows    %s" % ("On" if GameSettings.shadows else "Off")
 	_full_button.text = "Fullscreen    %s" % ("On" if GameSettings.fullscreen else "Off")
+	var shown := GameSettings.cover_see_through
+	if shown < 0.0:
+		shown = 0.75
+	_cover_slider.set_value_no_signal(shown * 100.0)
+	_cover_label.text = "See-through    %d%%" % int(round(shown * 100.0))
 	for action in _bind_buttons:
 		if action == _listen:
 			continue

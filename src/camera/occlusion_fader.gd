@@ -69,6 +69,8 @@ func _fade_covers(delta: float) -> void:
 			for item in find_cover(_camera.global_position, samples, covers):
 				blocking_ids[(item as Object).get_instance_id()] = true
 	var amount := _profile.cover_transparency
+	if GameSettings.cover_see_through >= 0.0:
+		amount = GameSettings.cover_see_through
 	var hold := _profile.cover_hold_seconds
 	for cover in covers:
 		if cover == null or not is_instance_valid(cover):
@@ -165,6 +167,7 @@ static func prepare_cover(root: Node) -> void:
 		if mesh == null:
 			continue
 		var ready := false
+		var blend := root is MeshInstance3D and root.get_child_count() == 0
 		for surface in mesh.get_surface_count():
 			var active := mesh_node.get_active_material(surface)
 			if active == null or not active is BaseMaterial3D:
@@ -177,10 +180,17 @@ static func prepare_cover(root: Node) -> void:
 			var color := copy.albedo_color
 			color.a = base_alpha
 			copy.albedo_color = color
-			copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
-			copy.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
-			copy.alpha_hash_scale = 1.0
+			if blend:
+				# A solid crate needs real opacity. Hash dither reads as a noisy solid box.
+				copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				copy.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+			else:
+				copy.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
+				copy.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
+				copy.alpha_hash_scale = 1.0
 			mesh_node.set_surface_override_material(surface, copy)
+			if blend and surface == 0:
+				mesh_node.material_override = copy
 			ready = true
 		if ready:
 			mesh_node.set_meta(&"cover_ready", true)
