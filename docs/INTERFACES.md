@@ -137,6 +137,7 @@ func bind(cam: Camera3D, focus: Node3D, profile: CameraProfile) -> void
 func watch(sim: Simulation) -> void
 static func find_occluders(from: Vector3, sample_points: PackedVector3Array, instances: Array) -> Array
 static func find_cover(from: Vector3, sample_points: PackedVector3Array, covers: Array) -> Array
+static func prepare_cover(root: Node) -> void
 
 class_name GroundRing extends Node3D
 func configure(radius: float, thickness: float, color: Color, alpha := 1.0) -> void

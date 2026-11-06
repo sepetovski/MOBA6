@@ -17,8 +17,9 @@ class_name CameraProfile extends Resource
 @export var orbit_deg_per_pixel := 0.22      # middle-mouse orbit, degrees per pixel
 @export var bounds_margin := 6.0             # m beyond the arena bounds for the focus point
 @export var occluded_transparency := 0.75    # 0 = opaque, 1 = invisible
-@export var cover_transparency := 0.5        # 0 = opaque, 1 = invisible. Trees and boxes hiding an enemy
-@export var occlusion_fade_speed := 6.0      # transparency per second
+@export var cover_transparency := 0.5        # 0 = opaque, 1 = invisible. Trees and boxes hiding any character
+@export var occlusion_fade_speed := 6.0      # transparency per second, walls in the occluder_fade group
+@export var cover_fade_speed := 5.0          # alpha per second. Half fade takes about 0.1 s
 @export var sample_heights_m: PackedFloat32Array = PackedFloat32Array([0.2, 0.9, 1.7]) # m above the focus origin (feet)
 @export var surface_lift := 0.02             # m, feedback meshes sit off the surface
 @export var click_radius_start := 0.45       # m

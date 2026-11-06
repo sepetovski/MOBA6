@@ -105,22 +105,65 @@ func test_cover_fades_when_an_enemy_is_behind_it() -> void:
 	assert_eq(other.transparency, 0.0)
 
 
-func test_cover_stays_solid_with_no_enemy() -> void:
+func test_you_fade_the_cover_in_front_of_the_camera() -> void:
 	var camera := Camera3D.new()
 	camera.position = Vector3(0.0, 4.0, 8.0)
 	var focus := Node3D.new()
+	focus.position = Vector3(0.0, 0.0, -2.0)
 	var box := _box("Cover", Vector3(0.0, 1.5, 2.0), Vector3(2.0, 3.0, 1.0))
 	box.add_to_group(&"cover_fade")
-	box.transparency = 0.5
+	var beside := _box("Beside", Vector3(8.0, 1.5, 2.0), Vector3(1.0, 2.0, 1.0))
+	beside.add_to_group(&"cover_fade")
+	beside.transparency = 0.5
 	var fader := OcclusionFader.new()
 	add_child_autofree(camera)
 	add_child_autofree(focus)
 	add_child_autofree(fader)
 	var profile := CameraProfile.new()
-	profile.occlusion_fade_speed = 100.0
+	profile.cover_fade_speed = 100.0
+	profile.cover_transparency = 0.5
+	profile.sample_heights_m = PackedFloat32Array([1.0])
 	fader.bind(camera, focus, profile)
 	fader._process(1.0)
-	assert_eq(box.transparency, 0.0)
+	assert_almost_eq(box.transparency, 0.5, 0.001)
+	assert_eq(beside.transparency, 0.0)
+
+
+func test_prepared_cover_fades_alpha_without_a_pipeline_switch() -> void:
+	var camera := Camera3D.new()
+	camera.position = Vector3(0.0, 4.0, 8.0)
+	var focus := Node3D.new()
+	focus.position = Vector3(0.0, 0.0, -2.0)
+	var leaves := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(2.0, 4.0, 1.0)
+	leaves.mesh = mesh
+	leaves.position = Vector3(0.0, 2.0, 2.0)
+	var cutout := StandardMaterial3D.new()
+	cutout.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	cutout.alpha_scissor_threshold = 0.2
+	cutout.albedo_color = Color(0.2, 0.55, 0.2, 1.0)
+	leaves.material_override = cutout
+	leaves.add_to_group(&"cover_fade")
+	OcclusionFader.prepare_cover(leaves)
+	var faded := leaves.get_surface_override_material(0) as StandardMaterial3D
+	assert_not_null(faded)
+	assert_eq(faded.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA)
+	assert_eq(faded.depth_draw_mode, BaseMaterial3D.DEPTH_DRAW_DISABLED)
+	assert_almost_eq(faded.albedo_color.a, 1.0, 0.001)
+	var fader := OcclusionFader.new()
+	add_child_autofree(camera)
+	add_child_autofree(focus)
+	add_child_autofree(leaves)
+	add_child_autofree(fader)
+	var profile := CameraProfile.new()
+	profile.cover_fade_speed = 100.0
+	profile.cover_transparency = 0.5
+	profile.sample_heights_m = PackedFloat32Array([1.2])
+	fader.bind(camera, focus, profile)
+	fader._process(1.0)
+	assert_almost_eq(faded.albedo_color.a, 0.5, 0.001)
+	assert_eq(leaves.transparency, 0.0)
 
 
 func _box(node_name: String, at: Vector3, size: Vector3) -> MeshInstance3D:

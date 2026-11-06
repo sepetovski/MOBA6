@@ -115,6 +115,7 @@ static func _platform(root: Node3D, at: Vector3, size: Vector3, top: float, colo
 	visual.mesh = mesh
 	visual.material_override = GreyMaterials.flat_material(color)
 	visual.add_to_group(&"cover_fade")
+	OcclusionFader.prepare_cover(visual)
 	body.add_child(visual)
 	var shape := BoxShape3D.new()
 	shape.size = size
@@ -221,6 +222,7 @@ static func _place(root: Node3D, file_name: String, spot: Vector3, target_height
 			_collider(root, node.position, box, scale, trunk * ENV_SCALE, bulk, wide)
 			_shot_wall(root, node)
 			node.add_to_group(&"cover_fade")
+			OcclusionFader.prepare_cover(node)
 
 
 static func _collider(root: Node3D, at: Vector3, box: AABB, scale: float, trunk: float, bulk: float, wide: float) -> void:
