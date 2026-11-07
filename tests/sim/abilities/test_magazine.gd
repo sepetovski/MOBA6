@@ -4,13 +4,15 @@ extends GutTest
 
 
 func test_melee_magazine_is_smaller_and_slower_than_ranged() -> void:
+	BalanceStore.reset()
 	var melee := HeroCatalog.gladiator().stats
 	var skirmisher := HeroCatalog.skirmisher().stats
 	var ranged := HeroCatalog.slinger().stats
 	assert_between(melee.magazine, 7, 10)
 	assert_between(skirmisher.magazine, 7, 10)
-	assert_between(ranged.magazine, 15, 20)
+	assert_between(ranged.magazine, 8, 12)
 	assert_lt(ranged.attack_interval, melee.attack_interval)
+	assert_gte(ranged.attack_interval, 0.35)
 	assert_lt(ranged.attack_damage, melee.attack_damage)
 	assert_between(melee.reload_seconds, 1.0, 2.0)
 	assert_between(ranged.reload_seconds, 1.0, 2.0)

@@ -66,7 +66,13 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Profile history | matches | 20 | `src/profile/player_profile.gd` | Newest first. Career totals still count every match |
 | Hero acceleration | m/s² | 64 | `data/movement_profiles/gladiator.tres` | Snappier than the 40 default. Tests still use the script default |
 | Melee magazine | swings | 8 and 10 | `src/sim/abilities/hero_catalog.gd` | Gladiator 8, Skirmisher 10. Reload 1.7 s and 1.45 s |
-| Ranged magazine | shots | 18 | `src/sim/abilities/hero_catalog.gd` | Slinger. Faster interval 0.22 s, 7 damage, reload 1.35 s |
+| Ranged magazine | shots | 10 | `src/sim/abilities/hero_catalog.gd` | Slinger. Interval 0.42 s, 12 damage, reload 1.6 s. Items cannot push the interval under 0.30 s |
+| Kill gold |  | 180 + 40 per victim kill, cap +160 | `src/balance/balance_store.gd` | F8 can change it. The match score is earned gold, not the pocket you spend |
+| Assist gold |  | 60 | `src/balance/balance_store.gd` | Flat, last 10 s of damage. Not a split of the kill |
+| Gold trickle | gold/s | 3 | `src/balance/balance_store.gd` | While the match is running. About 900 if you never fight |
+| Match length | s | 300 | `src/balance/balance_store.gd` | F10 match page. The clock reads this live |
+| Inventory slots |  | 10 | `src/balance/balance_store.gd` | Bag size. The bar shows them as 2 rows of 5 |
+| Active item slots |  | 4 | `src/balance/balance_store.gd` | Keys 1 to 4. Stat items do not use these |
 | Cover fade |  | 0.75 | `data/camera_profile.gd` | Trees and boxes hiding any character, including you. 0 is solid, 1 is invisible |
 | Cover fade speed | 1/s | 5 | `data/camera_profile.gd` | Eases in about 0.15 s. The material stays on alpha hash, so this is not a shader load |
 | Cover hold | s | 0.2 | `data/camera_profile.gd` | Keeps the fade briefly so a camera twitch does not flash the tree solid |

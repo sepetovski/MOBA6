@@ -168,6 +168,8 @@ static func record_match(sim: Simulation) -> void
 
 ## Match (M4)
 
-`Simulation` ticks at physics priority 0. Controllers use priority -10 and only call `submit_command`. `dt` is `1 / GameConfig.TICK_RATE`. Before `RUNNING`, every command except `STOP` is dropped.
+`Simulation` ticks at physics priority 0. Controllers use priority -10 and only call `submit_command`. `dt` is `1 / GameConfig.TICK_RATE`. Before `RUNNING`, every command except `STOP` is dropped. `BUY` spends pocket gold at your own stall. `ACTIVATE` fires the first owned active, or the one named on the command. Key 1 sends it. F8 opens `BalanceAdmin`.
 
-`SimUnit.sim_step` is called by `Simulation` only. `UnitView` wraps `PlaceholderUnitView`. `GateController` sinks `Gate_A_Door` and `Gate_B_Door` when the match reaches `RUNNING`. `DebugHud` reads state and events.
+`BalanceStore` reads `user://balance.json` over the shipped hero sheets, match gold rules, and item list. `Loadout.apply` rebuilds stats from the base sheet plus owned items. Team score is `gold_earned`. The pocket you spend is `gold`.
+
+`SimUnit.sim_step` is called by `Simulation` only. `UnitView` wraps `PlaceholderUnitView`. `GateController` sinks `Gate_A_Door` and `Gate_B_Door` when the match reaches `RUNNING`. `DebugHud` reads state and events. `SpawnShop` opens within 7.5 m of `ArenaInfo.shop_anchor`.

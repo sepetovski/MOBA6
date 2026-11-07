@@ -3,7 +3,7 @@
 Do not build these until the human asks. Add ideas here instead of expanding a milestone.
 
 - Minions, towers, lanes, jungle
-- Items, gold, XP, shop
+- Items, gold, and the spawn shop have a first pass: F8 balance, stat items, blink, leap, and stun. Still out: selling, item icons, gold camps, XP
 - Fog of war
 - Spectator mode, replays
 - Matchmaking, accounts, cosmetics

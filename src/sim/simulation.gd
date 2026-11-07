@@ -22,11 +22,8 @@ var _respawn_at: Dictionary = {}
 var _towers: Array[TeamTower] = []
 var _groves: Array[HealingGrove] = []
 var _recent_hits: Dictionary = {}
+var _gold_frac: Dictionary = {}
 var _played := 0
-const ASSIST_SECONDS := 25.0
-const BOUNTY_BASE := 100
-const BOUNTY_PER_KILL := 50
-const ASSIST_SHARE := 0.25
 
 
 func _init() -> void:
@@ -131,14 +128,14 @@ func get_clock_seconds() -> float:
 	if _match.state == Match.State.FINISHED:
 		return 0.0
 	var played := float(_played) / float(GameConfig.TICK_RATE)
-	return maxf(_config.match_seconds - played, 0.0)
+	return maxf(float(BalanceStore.rules()["match_seconds"]) - played, 0.0)
 
 
 func team_gold(team: int) -> int:
 	var total := 0
 	for unit in get_units():
 		if unit.team == team:
-			total += unit.state.gold
+			total += unit.state.gold_earned
 	return total
 
 
@@ -244,7 +241,8 @@ func _physics_process(_delta: float) -> void:
 		_separate(step)
 	if _match.state == Match.State.RUNNING:
 		_played += 1
-		var limit := int(round(_config.match_seconds * float(GameConfig.TICK_RATE)))
+		_pay_trickle()
+		var limit := int(round(float(BalanceStore.rules()["match_seconds"]) * float(GameConfig.TICK_RATE)))
 		if limit < 1:
 			limit = 1
 		if _played >= limit:
@@ -279,7 +277,13 @@ func _apply_due_commands() -> void:
 	)
 	for cmd in due:
 		var unit := get_unit(cmd.unit_id)
-		if unit != null and unit.state.alive:
+		if unit == null or not unit.state.alive:
+			continue
+		if cmd.kind == Command.Kind.BUY:
+			_buy(unit, cmd.item_id)
+		elif cmd.kind == Command.Kind.ACTIVATE:
+			_activate(unit, cmd)
+		else:
 			unit.apply_command(cmd)
 
 
@@ -335,7 +339,7 @@ func deal_damage(source_id: int, target_id: int, amount: float) -> void:
 	var unit := get_unit(target_id)
 	if unit == null or not unit.state.alive or amount <= 0.0:
 		return
-	unit.state.health = maxf(unit.state.health - amount, 0.0)
+	unit.state.health = maxf(unit.state.health - amount * unit.damage_taken, 0.0)
 	_credit_damage(source_id, target_id, amount)
 	GameEvents.damage_dealt.emit(source_id, target_id, amount, 0)
 	if unit.state.health > 0.0:
@@ -379,7 +383,7 @@ func _score_kill(killer_id: int, target_id: int) -> void:
 		if killer != null:
 			killer.state.kills += 1
 	var assisters: Array[SimUnit] = []
-	var window := int(ASSIST_SECONDS * float(GameConfig.TICK_RATE))
+	var window := int(float(BalanceStore.rules()["assist_seconds"]) * float(GameConfig.TICK_RATE))
 	var hits: Dictionary = _recent_hits.get(target_id, {})
 	for source_id in hits.keys():
 		var id := int(source_id)
@@ -397,26 +401,144 @@ func _score_kill(killer_id: int, target_id: int) -> void:
 
 
 func _pay_bounty(killer: SimUnit, assisters: Array[SimUnit], victim: SimUnit) -> void:
-	var bounty := BOUNTY_BASE + victim.state.kills * BOUNTY_PER_KILL
+	var bounty := BalanceStore.kill_bounty(victim.state.kills)
 	if killer != null:
 		_give_gold(killer, bounty)
-	if assisters.is_empty():
-		return
-	var pool := int(round(float(bounty) * ASSIST_SHARE))
-	var share := int(pool / assisters.size())
-	var extra := pool % assisters.size()
-	for index in assisters.size():
-		var amount := share
-		if index < extra:
-			amount += 1
-		_give_gold(assisters[index], amount)
+	var assist := int(BalanceStore.rules()["assist_gold"])
+	for helper in assisters:
+		_give_gold(helper, assist)
 
 
 func _give_gold(unit: SimUnit, amount: int) -> void:
 	if unit == null or amount <= 0:
 		return
 	unit.state.gold += amount
+	unit.state.gold_earned += amount
 	GameEvents.gold_awarded.emit(unit.unit_id, amount)
+
+
+func _pay_trickle() -> void:
+	var step := float(BalanceStore.rules()["gold_per_second"]) / float(GameConfig.TICK_RATE)
+	if step <= 0.0:
+		return
+	for unit in get_units():
+		if unit == null or not unit.state.alive:
+			continue
+		var purse := float(_gold_frac.get(unit.unit_id, 0.0)) + step
+		var whole := int(purse)
+		_gold_frac[unit.unit_id] = purse - float(whole)
+		if whole > 0:
+			_give_gold(unit, whole)
+
+
+func _buy(unit: SimUnit, item_id: String) -> void:
+	var item := BalanceStore.item(item_id)
+	if item == null or unit.owns(item.id) or not _in_shop(unit):
+		return
+	var rules := BalanceStore.rules()
+	if unit.owned.size() >= int(rules["inventory_slots"]):
+		return
+	if item.active != "none" and _active_count(unit) >= int(rules["active_slots"]):
+		return
+	if unit.state.gold < item.price:
+		return
+	unit.state.gold -= item.price
+	unit.owned.append(item.id)
+	unit.reapply_loadout()
+
+
+func _active_count(unit: SimUnit) -> int:
+	var count := 0
+	for owned_id in unit.owned:
+		var owned := BalanceStore.item(owned_id)
+		if owned != null and owned.active != "none":
+			count += 1
+	return count
+
+
+func _activate(unit: SimUnit, cmd: Command) -> void:
+	if unit.stun_until > tick:
+		return
+	var id := cmd.item_id
+	if id.is_empty():
+		var actives: PackedStringArray = []
+		for owned_id in unit.owned:
+			var candidate := BalanceStore.item(owned_id)
+			if candidate != null and candidate.active != "none":
+				actives.append(candidate.id)
+		if cmd.slot >= 0 and cmd.slot < actives.size():
+			id = actives[cmd.slot]
+	var item := BalanceStore.item(id)
+	if item == null or item.active == "none" or not unit.owns(item.id):
+		return
+	if tick < int(unit.item_ready.get(item.id, 0)):
+		return
+	var used := false
+	if item.active == "blink":
+		used = _blink(unit, cmd.point, item.reach)
+	elif item.active == "leap":
+		_leap(unit, cmd.point, item.reach, item.duration)
+		used = true
+	elif item.active == "stun":
+		used = _stun(unit, cmd.point, item.reach, item.duration)
+	if used:
+		unit.item_ready[item.id] = tick + int(round(item.cooldown * float(GameConfig.TICK_RATE)))
+
+
+func _blink(unit: SimUnit, point: Vector3, reach: float) -> bool:
+	var flat := point - unit.global_position
+	flat.y = 0.0
+	if flat.length_squared() < 0.04:
+		flat = -unit.global_basis.z
+		flat.y = 0.0
+	if flat.length_squared() < 0.04:
+		return false
+	var dest := unit.global_position + flat.normalized() * minf(flat.length(), reach)
+	dest.y = unit.global_position.y
+	if _info != null and not _info.allows(dest):
+		return false
+	unit.place_at(Transform3D(unit.global_basis, dest))
+	return true
+
+
+func _leap(unit: SimUnit, point: Vector3, height: float, _push: float) -> void:
+	var flat := point - unit.global_position
+	flat.y = 0.0
+	if flat.length_squared() < 0.04:
+		flat = -unit.global_basis.z
+		flat.y = 0.0
+	if flat.length_squared() < 0.04:
+		flat = Vector3(0.0, 0.0, -1.0)
+	flat = flat.normalized() * 3.2
+	unit.motor.start_forced_motion(Vector3(flat.x, maxf(height, 1.2), flat.z), 0.35, null, true)
+
+
+func _stun(unit: SimUnit, point: Vector3, reach: float, seconds: float) -> bool:
+	var best: SimUnit = null
+	var best_aim := reach
+	for other in get_units():
+		if other == null or other == unit or not other.state.alive or other.team == unit.team:
+			continue
+		if other.global_position.distance_to(unit.global_position) > reach:
+			continue
+		var aim := other.global_position.distance_to(point)
+		if best == null or aim < best_aim:
+			best = other
+			best_aim = aim
+	if best == null:
+		return false
+	best.stun_until = tick + int(round(seconds * float(GameConfig.TICK_RATE)))
+	return true
+
+
+func near_shop(unit: SimUnit) -> bool:
+	return _in_shop(unit)
+
+
+func _in_shop(unit: SimUnit) -> bool:
+	if _info == null:
+		return false
+	return unit.global_position.distance_to(_info.shop_anchor(unit.team)) <= 7.5
 
 
 func _finish_match() -> void:

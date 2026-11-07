@@ -50,6 +50,12 @@ func _ready() -> void:
 	_full_button = _toggle("Fullscreen")
 	_full_button.pressed.connect(_on_fullscreen)
 	box.add_child(_full_button)
+	var balance := Button.new()
+	balance.text = "Balance    F10"
+	balance.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	balance.custom_minimum_size = Vector2(240, 40)
+	balance.pressed.connect(_open_balance)
+	box.add_child(balance)
 	box.add_child(_title("Cover see-through", 16))
 	_cover_label = _title("How clear trees and boxes are when someone is behind them.", 14)
 	box.add_child(_cover_label)
@@ -60,7 +66,7 @@ func _ready() -> void:
 	_cover_slider.custom_minimum_size = Vector2(420, 28)
 	_cover_slider.value_changed.connect(_on_cover)
 	box.add_child(_cover_slider)
-	box.add_child(_title("Esc opens this during a match. Drag the slider and look at a tree.", 14))
+	box.add_child(_title("Esc opens this during a match. Balance is F10. Godot uses F8 to stop the game.", 14))
 	box.add_child(_title("Controls", 22))
 	var schemes := HBoxContainer.new()
 	schemes.add_theme_constant_override("separation", 8)
@@ -152,6 +158,15 @@ func _on_shadows() -> void:
 func _on_fullscreen() -> void:
 	GameSettings.set_fullscreen(not GameSettings.fullscreen)
 	_refresh()
+
+
+func _open_balance() -> void:
+	var panels := get_tree().get_nodes_in_group(&"balance_admin")
+	if panels.is_empty():
+		return
+	var admin := panels[0] as BalanceAdmin
+	if admin != null and not admin.is_open():
+		admin.toggle()
 
 
 func _on_cover(value: float) -> void:

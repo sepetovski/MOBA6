@@ -27,6 +27,13 @@ func setup(unit: SimUnit, hero: HeroDefinition) -> void:
 	_magazine.fill(_stats.magazine, _stats.reload_seconds, _stats.attack_interval)
 
 
+func retune(stats: UnitStats) -> void:
+	if stats == null:
+		return
+	_stats = stats
+	_magazine.retune(stats.magazine, stats.reload_seconds, stats.attack_interval)
+
+
 func attack_range() -> float:
 	return _stats.attack_range
 
