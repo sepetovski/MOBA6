@@ -1,6 +1,6 @@
 class_name BalanceAdmin extends CanvasLayer
 
-## F8. Match gold, champion sheets, and the item list. Saved on this machine only.
+## Balance. F10, or the Balance button in settings. Saved on this machine only.
 
 var _root: Control
 var _page := "match"
@@ -14,7 +14,7 @@ var _body: VBoxContainer
 
 func _ready() -> void:
 	layer = 40
-	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group(&"balance_admin")
 	BalanceStore.boot()
 	_root = Control.new()
 	_root.visible = false
@@ -27,12 +27,13 @@ func _ready() -> void:
 	panel.offset_right = 460.0
 	panel.offset_top = -340.0
 	panel.offset_bottom = 340.0
+	panel.add_theme_stylebox_override("panel", _panel_style())
 	_root.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)
 	var title := Label.new()
-	title.text = "Balance    F8"
+	title.text = "Balance"
 	title.add_theme_font_size_override("font_size", 28)
 	title.add_theme_color_override("font_color", Color(0.98, 0.95, 0.86))
 	box.add_child(title)
@@ -67,16 +68,37 @@ func _ready() -> void:
 	_show_page("match")
 
 
+func is_open() -> bool:
+	return _root != null and _root.visible
+
+
+func toggle() -> void:
+	_root.visible = not _root.visible
+	if _root.visible:
+		_show_page(_page)
+
+
 func _input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
 	var key := event as InputEventKey
-	if not key.pressed or key.echo or key.physical_keycode != KEY_F8:
+	if not key.pressed or key.echo or key.physical_keycode != KEY_F10:
 		return
-	_root.visible = not _root.visible
-	if _root.visible:
-		_show_page(_page)
+	toggle()
 	get_viewport().set_input_as_handled()
+
+
+func _panel_style() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.07, 0.08, 0.07, 0.96)
+	box.border_color = Color(0.86, 0.74, 0.32)
+	box.set_border_width_all(2)
+	box.set_corner_radius_all(10)
+	box.content_margin_left = 16
+	box.content_margin_right = 16
+	box.content_margin_top = 12
+	box.content_margin_bottom = 12
+	return box
 
 
 func _show_page(page: String) -> void:
