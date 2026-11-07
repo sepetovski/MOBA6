@@ -121,7 +121,7 @@ func _show_page(page: String) -> void:
 func _build_match() -> void:
 	_match_fields.clear()
 	var rules := BalanceStore.rules()
-	for key in ["match_seconds", "gold_per_second", "kill_gold", "kill_streak_gold", "kill_streak_cap", "assist_gold", "assist_seconds", "start_gold"]:
+	for key in ["match_seconds", "gold_per_second", "kill_gold", "kill_streak_gold", "kill_streak_cap", "assist_gold", "assist_seconds", "start_gold", "inventory_slots", "active_slots"]:
 		_match_fields[key] = _number_row(_body, key.replace("_", " "), str(rules[key]))
 	_note("Match length and gold apply on the next tick. Champion sheets apply to the next unit that spawns.")
 

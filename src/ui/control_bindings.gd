@@ -7,7 +7,8 @@ class_name ControlBindings extends RefCounted
 const GAMEPLAY: PackedStringArray = [
 	"move_forward", "move_back", "move_left", "move_right",
 	"move_click", "fire", "jump", "crouch_slide", "dash", "stop",
-	"ability_1", "ability_2", "camera_lock", "item",
+	"ability_1", "ability_2", "camera_lock", "shop",
+	"item_1", "item_2", "item_3", "item_4",
 ]
 
 const LABELS := {
@@ -24,7 +25,11 @@ const LABELS := {
 	"ability_1": "Ability 1",
 	"ability_2": "Ability 2",
 	"camera_lock": "Camera lock",
-	"item": "Item active",
+	"shop": "Shop",
+	"item_1": "Active item 1",
+	"item_2": "Active item 2",
+	"item_3": "Active item 3",
+	"item_4": "Active item 4",
 }
 
 
@@ -49,7 +54,7 @@ static func apply_preset(scheme: String) -> void:
 		_bind("ability_1", _key(KEY_Q))
 		_bind("ability_2", _key(KEY_E))
 		_bind("camera_lock", _key(KEY_Y))
-		_bind("item", _key(KEY_1))
+		_bind_shop_and_items()
 		return
 	_bind("move_click", _mouse(MOUSE_BUTTON_RIGHT))
 	_bind("fire", _mouse(MOUSE_BUTTON_LEFT))
@@ -60,7 +65,16 @@ static func apply_preset(scheme: String) -> void:
 	_bind("ability_1", _key(KEY_Q))
 	_bind("ability_2", _key(KEY_W))
 	_bind("camera_lock", _key(KEY_Y))
-	_bind("item", _key(KEY_1))
+	_bind_shop_and_items()
+
+
+static func _bind_shop_and_items() -> void:
+	_bind("shop", _key(KEY_B))
+	InputMap.action_add_event(&"shop", _key(KEY_QUOTELEFT))
+	_bind("item_1", _key(KEY_1))
+	_bind("item_2", _key(KEY_2))
+	_bind("item_3", _key(KEY_3))
+	_bind("item_4", _key(KEY_4))
 
 
 static func set_event(action: String, event: InputEvent) -> void:

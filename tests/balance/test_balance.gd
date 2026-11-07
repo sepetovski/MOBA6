@@ -51,6 +51,18 @@ func test_flat_health_and_percent_damage_stack_from_the_base() -> void:
 	assert_almost_eq(next.attack_interval, 0.30, 0.001)
 
 
+func test_stat_items_are_not_actives() -> void:
+	var actives := 0
+	for item in BalanceStore.items():
+		if item.active != "none":
+			actives += 1
+		else:
+			assert_ne(item.category, "active")
+	assert_eq(actives, 3)
+	assert_eq(int(BalanceStore.rules()["inventory_slots"]), 10)
+	assert_eq(int(BalanceStore.rules()["active_slots"]), 4)
+
+
 func test_added_hero_uses_the_template_kit() -> void:
 	var id := BalanceStore.add_hero("Night Blade", "melee")
 	var hero := HeroCatalog.by_id(StringName(id))

@@ -435,6 +435,11 @@ func _buy(unit: SimUnit, item_id: String) -> void:
 	var item := BalanceStore.item(item_id)
 	if item == null or unit.owns(item.id) or not _in_shop(unit):
 		return
+	var rules := BalanceStore.rules()
+	if unit.owned.size() >= int(rules["inventory_slots"]):
+		return
+	if item.active != "none" and _active_count(unit) >= int(rules["active_slots"]):
+		return
 	if unit.state.gold < item.price:
 		return
 	unit.state.gold -= item.price
@@ -442,16 +447,27 @@ func _buy(unit: SimUnit, item_id: String) -> void:
 	unit.reapply_loadout()
 
 
+func _active_count(unit: SimUnit) -> int:
+	var count := 0
+	for owned_id in unit.owned:
+		var owned := BalanceStore.item(owned_id)
+		if owned != null and owned.active != "none":
+			count += 1
+	return count
+
+
 func _activate(unit: SimUnit, cmd: Command) -> void:
 	if unit.stun_until > tick:
 		return
 	var id := cmd.item_id
 	if id.is_empty():
+		var actives: PackedStringArray = []
 		for owned_id in unit.owned:
 			var candidate := BalanceStore.item(owned_id)
 			if candidate != null and candidate.active != "none":
-				id = candidate.id
-				break
+				actives.append(candidate.id)
+		if cmd.slot >= 0 and cmd.slot < actives.size():
+			id = actives[cmd.slot]
 	var item := BalanceStore.item(id)
 	if item == null or item.active == "none" or not unit.owns(item.id):
 		return

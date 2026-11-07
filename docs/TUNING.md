@@ -70,7 +70,9 @@ Every gameplay number lives in a `Resource` `@export` field. List it here when y
 | Kill gold |  | 180 + 40 per victim kill, cap +160 | `src/balance/balance_store.gd` | F8 can change it. The match score is earned gold, not the pocket you spend |
 | Assist gold |  | 60 | `src/balance/balance_store.gd` | Flat, last 10 s of damage. Not a split of the kill |
 | Gold trickle | gold/s | 3 | `src/balance/balance_store.gd` | While the match is running. About 900 if you never fight |
-| Match length | s | 300 | `src/balance/balance_store.gd` | F8 match page. The clock reads this live |
+| Match length | s | 300 | `src/balance/balance_store.gd` | F10 match page. The clock reads this live |
+| Inventory slots |  | 10 | `src/balance/balance_store.gd` | Bag size. The bar shows them as 2 rows of 5 |
+| Active item slots |  | 4 | `src/balance/balance_store.gd` | Keys 1 to 4. Stat items do not use these |
 | Cover fade |  | 0.75 | `data/camera_profile.gd` | Trees and boxes hiding any character, including you. 0 is solid, 1 is invisible |
 | Cover fade speed | 1/s | 5 | `data/camera_profile.gd` | Eases in about 0.15 s. The material stays on alpha hash, so this is not a shader load |
 | Cover hold | s | 0.2 | `data/camera_profile.gd` | Keeps the fade briefly so a camera twitch does not flash the tree solid |

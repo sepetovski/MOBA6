@@ -88,8 +88,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"ability_2"):
 		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 1)
 		_mark_handled()
-	elif InputMap.has_action(&"item") and event.is_action_pressed(&"item"):
-		_emit_item()
+	elif _item_slot(event) >= 0:
+		_emit_item(_item_slot(event))
 		_mark_handled()
 
 
@@ -195,7 +195,15 @@ func _clear_hold() -> void:
 		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
 
 
-func _emit_item() -> void:
+func _item_slot(event: InputEvent) -> int:
+	for slot in 4:
+		var action := "item_%d" % (slot + 1)
+		if InputMap.has_action(action) and event.is_action_pressed(action):
+			return slot
+	return -1
+
+
+func _emit_item(slot: int) -> void:
 	var cmd := Command.new()
 	cmd.tick = 0
 	cmd.seq = _seq
@@ -203,6 +211,7 @@ func _emit_item() -> void:
 	cmd.unit_id = _unit_id
 	cmd.kind = Command.Kind.ACTIVATE
 	cmd.point = _ground_or_zero()
+	cmd.slot = slot
 	cmd.item_id = ""
 	command_issued.emit(cmd)
 	if _sink.is_valid():

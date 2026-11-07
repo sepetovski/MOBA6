@@ -100,6 +100,8 @@ static func rules() -> Dictionary:
 		"assist_gold": int(_rules.get("assist_gold", 60)),
 		"assist_seconds": float(_rules.get("assist_seconds", 10.0)),
 		"start_gold": int(_rules.get("start_gold", 0)),
+		"inventory_slots": int(_rules.get("inventory_slots", 10)),
+		"active_slots": int(_rules.get("active_slots", 4)),
 	}
 
 

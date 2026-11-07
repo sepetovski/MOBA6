@@ -42,6 +42,8 @@ var show_chrome := true
 var show_result := true
 var _dash_fills: Array[ColorRect] = []
 var _dash_tracks: Array[ColorRect] = []
+var _item_names: Array[Label] = []
+var _item_keys: Array[Label] = []
 var _collision_root: Node3D
 var _collision_on := false
 var _freecam: Camera3D
@@ -83,7 +85,6 @@ func bind(sim: Simulation, camera: MobaCamera) -> void:
 		_add_unit(unit)
 	_build_minimap()
 	GameEvents.damage_dealt.connect(_show_damage)
-	GameEvents.gold_awarded.connect(_show_gold)
 	_collision_root = Node3D.new()
 	_collision_root.name = "CollisionDebug"
 	sim.get_parent().add_child(_collision_root)
@@ -308,12 +309,12 @@ func _update_score() -> void:
 func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 	if _player_bar == null:
 		return
-	_player_bar.position = Vector2(view.x * 0.5 - 460, view.y - 200)
+	_player_bar.position = Vector2(view.x * 0.5 - 500, view.y - 220)
 	if human == null:
 		return
 	_hero_label.text = "%s   %s" % [human.state.display_name, human.hero_name]
 	var fraction := clampf(human.state.health / maxf(human.state.max_health, 1.0), 0.0, 1.0)
-	_hp_fill.size.x = 248.0 * fraction
+	_hp_fill.size.x = 296.0 * fraction
 	_hp_fill.color = Color(lerpf(0.86, 0.18, fraction), lerpf(0.22, 0.78, fraction), 0.22)
 	_hp_text.text = "%d / %d" % [int(round(human.state.health)), int(round(human.state.max_health))]
 	_pocket_gold.text = "GOLD  %d" % human.state.gold
@@ -342,6 +343,7 @@ func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 		_ability_times[slot].text = "ready" if cd <= 0.05 else "%.1f" % cd
 		if slot < human.combat.ability_count():
 			_ability_names[slot].text = human.combat.ability_name(slot)
+	_paint_items(human)
 
 
 func _fill_rows(rows: Array[HBoxContainer], team: int) -> void:
@@ -394,25 +396,6 @@ func _update_result(view: Vector2) -> void:
 	]
 
 
-func _show_gold(unit_id: int, amount: int) -> void:
-	var human := _sim.get_human()
-	if human == null or unit_id != human.unit_id or _camera == null or _camera.camera == null:
-		return
-	var label := Label.new()
-	label.text = "+%d" % amount
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 22)
-	label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.28))
-	label.position = _camera.camera.unproject_position(human.global_position + Vector3(0.6, 2.6, 0))
-	add_child(label)
-	var timer := Timer.new()
-	timer.one_shot = true
-	timer.wait_time = 1.0
-	timer.timeout.connect(label.queue_free)
-	label.add_child(timer)
-	timer.start()
-
-
 func _build_score_chip() -> void:
 	_score_panel = _framed(Vector2(268, 92), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
 	var caption := _text("K  /  D  /  A", 16, Color(0.78, 0.74, 0.6))
@@ -453,7 +436,7 @@ func _build_clock() -> void:
 
 
 func _build_player_bar() -> void:
-	_player_bar = _framed(Vector2(920, 176), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
+	_player_bar = _framed(Vector2(1000, 200), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
 	var inner := _player_bar.get_child(0)
 	_hero_label = _text("Hero", 18, Color(0.95, 0.93, 0.86))
 	_hero_label.position = Vector2(16, 8)
@@ -524,26 +507,51 @@ func _build_player_bar() -> void:
 		_ability_times.append(time)
 		_ability_names.append(name)
 	var items := _text("Items", 14, Color(0.75, 0.72, 0.62))
-	items.position = Vector2(580, 12)
+	items.position = Vector2(560, 8)
 	inner.add_child(items)
-	for slot in 3:
+	for slot in 10:
+		var column := slot % 5
+		var row := int(slot / 5)
+		var origin := Vector2(560 + column * 84, 28 + row * 80)
 		var slot_box := ColorRect.new()
 		slot_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot_box.color = Color(0.1, 0.1, 0.12)
-		slot_box.position = Vector2(580 + slot * 104, 36)
-		slot_box.size = Vector2(88, 88)
+		slot_box.position = origin
+		slot_box.size = Vector2(76, 72)
 		inner.add_child(slot_box)
-		var rim := ColorRect.new()
-		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rim.color = Color(0.55, 0.48, 0.28)
-		rim.position = slot_box.position - Vector2(2, 2)
-		rim.size = slot_box.size + Vector2(4, 4)
-		inner.add_child(rim)
-		inner.move_child(rim, slot_box.get_index())
-		var empty := _text("—", 20, Color(0.45, 0.42, 0.35))
-		empty.position = slot_box.position + Vector2(32, 30)
-		inner.add_child(empty)
+		var name := _text("", 12, Color(0.94, 0.92, 0.84))
+		name.position = origin + Vector2(4, 18)
+		name.size = Vector2(68, 48)
+		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		inner.add_child(name)
+		var key := _text("", 12, Color(1.0, 0.86, 0.4))
+		key.position = origin + Vector2(4, 2)
+		inner.add_child(key)
+		_item_names.append(name)
+		_item_keys.append(key)
 	add_child(_player_bar)
+
+
+func _paint_items(human: SimUnit) -> void:
+	var actives := 0
+	for slot in _item_names.size():
+		var name := _item_names[slot]
+		var key := _item_keys[slot]
+		if slot >= human.owned.size():
+			name.text = ""
+			key.text = ""
+			continue
+		var item := BalanceStore.item(human.owned[slot])
+		if item == null:
+			name.text = human.owned[slot]
+			key.text = ""
+			continue
+		name.text = item.display_name
+		if item.active != "none":
+			actives += 1
+			key.text = str(actives) if actives <= 4 else ""
+		else:
+			key.text = ""
 
 
 func _apply_chrome() -> void:
