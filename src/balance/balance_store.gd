@@ -122,6 +122,44 @@ static func item(id: String) -> ItemDefinition:
 	return null
 
 
+static func hero_ids() -> PackedStringArray:
+	boot()
+	var ids := PackedStringArray()
+	for key in _heroes.keys():
+		ids.append(str(key))
+	return ids
+
+
+static func add_hero(display_name: String, attack: String) -> String:
+	boot()
+	var id := _slug(display_name)
+	var sheet := HeroCatalog.template_sheet(attack)
+	sheet["display_name"] = display_name if not display_name.is_empty() else "New hero"
+	_heroes[id] = sheet
+	_loaded = true
+	save(rules(), _heroes, items())
+	return id
+
+
+static func _slug(raw: String) -> String:
+	var cleaned := ""
+	for i in raw.length():
+		var ch := raw.substr(i, 1).to_lower()
+		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+			cleaned += ch
+		elif ch == " " or ch == "_":
+			cleaned += "_"
+	cleaned = cleaned.strip_edges()
+	if cleaned.is_empty():
+		cleaned = "hero"
+	var id := cleaned
+	var n := 2
+	while id in ["gladiator", "skirmisher", "slinger"] or _heroes.has(id):
+		id = "%s_%d" % [cleaned, n]
+		n += 1
+	return id
+
+
 static func hero_overlay(id: String) -> Dictionary:
 	boot()
 	var raw: Variant = _heroes.get(id, {})
@@ -158,6 +196,12 @@ static func apply_hero(hero: HeroDefinition) -> void:
 		hero.movement.dash_recharge = float(overlay["dash_recharge"])
 	if overlay.has("dash_speed"):
 		hero.movement.dash_speed = float(overlay["dash_speed"])
+	if overlay.has("display_name"):
+		hero.display_name = str(overlay["display_name"])
+	if str(overlay.get("attack", "")) == "ranged":
+		hero.stats.attack = UnitStats.Attack.RANGED
+	elif overlay.has("attack"):
+		hero.stats.attack = UnitStats.Attack.MELEE
 
 
 static func sheet(hero: HeroDefinition) -> Dictionary:

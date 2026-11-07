@@ -7,6 +7,10 @@ var _page := "match"
 var _match_fields: Dictionary = {}
 var _hero_fields: Dictionary = {}
 var _item_list: ItemList
+var _selected_item := ""
+var _selected_hero := "gladiator"
+var _hero_name: LineEdit
+var _hero_draft: Dictionary = {}
 var _item_fields: Dictionary = {}
 var _mod_fields: Array[Dictionary] = []
 var _body: VBoxContainer
@@ -22,11 +26,11 @@ func _ready() -> void:
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_root)
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -460.0
-	panel.offset_right = 460.0
-	panel.offset_top = -340.0
-	panel.offset_bottom = 340.0
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.offset_left = 36.0
+	panel.offset_top = 36.0
+	panel.offset_right = -36.0
+	panel.offset_bottom = -36.0
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	_root.add_child(panel)
 	var box := VBoxContainer.new()
@@ -45,10 +49,11 @@ func _ready() -> void:
 		tabs.add_child(button)
 	box.add_child(tabs)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(860, 500)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(scroll)
 	_body = VBoxContainer.new()
-	_body.custom_minimum_size = Vector2(840, 0)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_body.add_theme_constant_override("separation", 6)
 	scroll.add_child(_body)
 	var row := HBoxContainer.new()
@@ -123,63 +128,74 @@ func _build_match() -> void:
 
 func _build_heroes() -> void:
 	_hero_fields.clear()
-	for id in ["gladiator", "skirmisher", "slinger"]:
+	if _hero_draft.is_empty():
+		_load_hero_draft()
+	if not _hero_draft.has(_selected_hero):
+		_selected_hero = "gladiator"
+	var split := _split()
+	var left: VBoxContainer = split[0]
+	var right: VBoxContainer = split[1]
+	var heading := Label.new()
+	heading.text = "Selected hero"
+	heading.add_theme_font_size_override("font_size", 20)
+	heading.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7))
+	left.add_child(heading)
+	_hero_name = _number_row(left, "name", str(_hero_draft[_selected_hero].get("display_name", _selected_hero)))
+	var fields := {}
+	for key in BalanceStore.HERO_FIELDS:
+		fields[key] = _number_row(left, key.replace("_", " "), str(_hero_draft[_selected_hero][key]))
+	_hero_fields[_selected_hero] = fields
+	_fill_hero_list(right)
+
+
+func _load_hero_draft() -> void:
+	for id in HeroCatalog.all_ids():
 		var hero := HeroCatalog.by_id(StringName(id))
-		var heading := Label.new()
-		heading.text = hero.display_name
-		heading.add_theme_font_size_override("font_size", 20)
-		heading.add_theme_color_override("font_color", Color(0.95, 0.9, 0.7))
-		_body.add_child(heading)
+		if hero == null:
+			continue
 		var sheet := BalanceStore.sheet(hero)
-		var fields := {}
-		for key in BalanceStore.HERO_FIELDS:
-			fields[key] = _number_row(_body, key.replace("_", " "), str(sheet[key]))
-		_hero_fields[id] = fields
+		var overlay := BalanceStore.hero_overlay(id)
+		sheet["display_name"] = hero.display_name
+		sheet["attack"] = "ranged" if hero.stats.attack == UnitStats.Attack.RANGED else "melee"
+		sheet["template"] = str(overlay.get("template", id))
+		_hero_draft[id] = sheet
 
 
 func _build_items() -> void:
 	_item_fields.clear()
 	_mod_fields.clear()
-	_item_list = ItemList.new()
-	_item_list.custom_minimum_size = Vector2(820, 160)
-	for item in BalanceStore.items():
-		_item_list.add_item("%s    %d    %s" % [item.display_name, item.price, item.category])
-	_item_list.item_selected.connect(func(index: int) -> void: _fill_item(index))
-	_body.add_child(_item_list)
-	_item_fields["id"] = _number_row(_body, "id", "")
-	_item_fields["name"] = _number_row(_body, "name", "")
-	_item_fields["price"] = _number_row(_body, "price", "400")
-	_item_fields["category"] = _number_row(_body, "category", "damage")
-	_item_fields["active"] = _number_row(_body, "active none blink leap stun", "none")
-	_item_fields["cooldown"] = _number_row(_body, "cooldown", "8")
-	_item_fields["range"] = _number_row(_body, "range", "8")
-	_item_fields["duration"] = _number_row(_body, "duration", "0.6")
+	if _selected_item.is_empty() and not BalanceStore.items().is_empty():
+		_selected_item = BalanceStore.items()[0].id
+	var split := _split()
+	var left: VBoxContainer = split[0]
+	var right: VBoxContainer = split[1]
+	_item_fields["id"] = _number_row(left, "id", "")
+	_item_fields["name"] = _number_row(left, "name", "")
+	_item_fields["price"] = _number_row(left, "price", "400")
+	_item_fields["category"] = _number_row(left, "category", "damage")
+	_item_fields["active"] = _number_row(left, "active none blink leap stun", "none")
+	_item_fields["cooldown"] = _number_row(left, "cooldown", "8")
+	_item_fields["range"] = _number_row(left, "range", "8")
+	_item_fields["duration"] = _number_row(left, "duration", "0.6")
 	for _slot in 3:
-		var stat := _number_row(_body, "stat", "")
-		var mode := _number_row(_body, "mode flat or percent", "flat")
-		var amount := _number_row(_body, "amount", "0")
+		var stat := _number_row(left, "stat", "")
+		var mode := _number_row(left, "mode flat or percent", "flat")
+		var amount := _number_row(left, "amount", "0")
 		_mod_fields.append({"stat": stat, "mode": mode, "amount": amount})
-	var row := HBoxContainer.new()
-	var add := Button.new()
-	add.text = "Add item"
-	add.pressed.connect(_add_item)
 	var remove := Button.new()
 	remove.text = "Delete selected"
 	remove.pressed.connect(_delete_item)
-	row.add_child(add)
-	row.add_child(remove)
-	_body.add_child(row)
+	left.add_child(remove)
 	_note("Stats: health, attack_damage, attack_interval, magazine, reload, run_speed, dash_charges, dash_recharge, damage_taken. Percent on attack_interval, reload, and dash_recharge makes them shorter.")
-	if _item_list.item_count > 0:
-		_item_list.select(0)
-		_fill_item(0)
+	_fill_item_list(right)
+	_fill_item_id(_selected_item)
 
 
-func _fill_item(index: int) -> void:
-	var catalog := BalanceStore.items()
-	if index < 0 or index >= catalog.size():
+func _fill_item_id(item_id: String) -> void:
+	var item := BalanceStore.item(item_id)
+	if item == null:
 		return
-	var item := catalog[index]
+	_selected_item = item.id
 	(_item_fields["id"] as LineEdit).text = item.id
 	(_item_fields["name"] as LineEdit).text = item.display_name
 	(_item_fields["price"] as LineEdit).text = str(item.price)
@@ -213,17 +229,10 @@ func _save() -> void:
 		rules = BalanceStore.rules()
 	var heroes := {}
 	if _page == "heroes":
-		for id in _hero_fields:
-			var sheet := {}
-			var fields: Dictionary = _hero_fields[id]
-			for key in fields:
-				sheet[key] = float((fields[key] as LineEdit).text)
-			heroes[id] = sheet
+		_stash_hero_form()
+		heroes = _hero_draft.duplicate(true)
 	else:
-		for id in ["gladiator", "skirmisher", "slinger"]:
-			heroes[id] = BalanceStore.hero_overlay(id)
-			if heroes[id].is_empty():
-				heroes[id] = BalanceStore.sheet(HeroCatalog.by_id(StringName(id)))
+		heroes = _current_heroes()
 	var items: Array[ItemDefinition] = []
 	if _page == "items":
 		items = _items_from_form_and_list()
@@ -241,14 +250,9 @@ func _items_from_form_and_list() -> Array[ItemDefinition]:
 
 
 func _write_selected_item() -> void:
-	var selected := _item_list.get_selected_items()
-	if selected.is_empty():
+	var item := BalanceStore.item(_selected_item)
+	if item == null:
 		return
-	var index := int(selected[0])
-	var catalog := BalanceStore.items()
-	if index < 0 or index >= catalog.size():
-		return
-	var item := catalog[index]
 	item.id = (_item_fields["id"] as LineEdit).text.strip_edges()
 	item.display_name = (_item_fields["name"] as LineEdit).text.strip_edges()
 	item.price = int((_item_fields["price"] as LineEdit).text)
@@ -269,7 +273,6 @@ func _write_selected_item() -> void:
 			"mode": "percent" if mode == "percent" else "flat",
 			"amount": float((slot["amount"] as LineEdit).text),
 		})
-	_item_list.set_item_text(index, "%s    %d    %s" % [item.display_name, item.price, item.category])
 
 
 func _add_item() -> void:
@@ -283,36 +286,158 @@ func _add_item() -> void:
 		items.append(existing)
 	items.append(item)
 	BalanceStore.save(BalanceStore.rules(), _current_heroes(), items)
+	_selected_item = item.id
 	_show_page("items")
-	_item_list.select(items.size() - 1)
-	_fill_item(items.size() - 1)
 
 
 func _delete_item() -> void:
-	var selected := _item_list.get_selected_items()
-	if selected.is_empty():
+	if _selected_item.is_empty():
 		return
-	var index := int(selected[0])
 	var items: Array[ItemDefinition] = []
-	var catalog := BalanceStore.items()
-	for i in catalog.size():
-		if i != index:
-			items.append(catalog[i])
+	for existing in BalanceStore.items():
+		if existing.id != _selected_item:
+			items.append(existing)
+	_selected_item = items[0].id if not items.is_empty() else ""
 	BalanceStore.save(BalanceStore.rules(), _current_heroes(), items)
 	_show_page("items")
 
 
 func _current_heroes() -> Dictionary:
 	var heroes := {}
-	for id in ["gladiator", "skirmisher", "slinger"]:
+	for id in HeroCatalog.all_ids():
 		var overlay := BalanceStore.hero_overlay(id)
-		heroes[id] = overlay if not overlay.is_empty() else BalanceStore.sheet(HeroCatalog.by_id(StringName(id)))
+		if not overlay.is_empty():
+			heroes[id] = overlay
+			continue
+		var hero := HeroCatalog.by_id(StringName(id))
+		if hero == null:
+			continue
+		var sheet := BalanceStore.sheet(hero)
+		sheet["display_name"] = hero.display_name
+		sheet["attack"] = "ranged" if hero.stats.attack == UnitStats.Attack.RANGED else "melee"
+		heroes[id] = sheet
 	return heroes
 
 
 func _reset() -> void:
 	BalanceStore.reset()
 	_show_page(_page)
+
+
+func _split() -> Array:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.add_child(row)
+	var left_scroll := ScrollContainer.new()
+	left_scroll.custom_minimum_size = Vector2(560, 620)
+	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(left_scroll)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 6)
+	left_scroll.add_child(left)
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(300, 0)
+	row.add_child(right)
+	return [left, right]
+
+
+func _fill_hero_list(column: VBoxContainer) -> void:
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(300, 560)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for id in _hero_draft.keys():
+		var button := Button.new()
+		button.text = str(_hero_draft[id].get("display_name", id))
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if id == _selected_hero:
+			button.modulate = Color(1.2, 1.1, 0.7)
+		button.pressed.connect(_select_hero.bind(id))
+		list.add_child(button)
+	var name_edit := LineEdit.new()
+	name_edit.placeholder_text = "New hero name"
+	name_edit.text = "New hero"
+	column.add_child(name_edit)
+	var add_row := HBoxContainer.new()
+	var melee := Button.new()
+	melee.text = "+ Melee"
+	melee.pressed.connect(_add_hero.bind(name_edit, "melee"))
+	var ranged := Button.new()
+	ranged.text = "+ Ranged"
+	ranged.pressed.connect(_add_hero.bind(name_edit, "ranged"))
+	add_row.add_child(melee)
+	add_row.add_child(ranged)
+	column.add_child(add_row)
+
+
+func _select_hero(id: String) -> void:
+	_stash_hero_form()
+	_selected_hero = id
+	_show_page("heroes")
+
+
+func _stash_hero_form() -> void:
+	if _hero_name == null or not _hero_draft.has(_selected_hero):
+		return
+	var sheet: Dictionary = _hero_draft[_selected_hero]
+	sheet["display_name"] = _hero_name.text.strip_edges()
+	var fields: Dictionary = _hero_fields.get(_selected_hero, {})
+	for key in fields:
+		sheet[key] = float((fields[key] as LineEdit).text)
+	_hero_draft[_selected_hero] = sheet
+
+
+func _add_hero(name_edit: LineEdit, attack: String) -> void:
+	_stash_hero_form()
+	if not _hero_draft.is_empty():
+		BalanceStore.save(BalanceStore.rules(), _hero_draft.duplicate(true), BalanceStore.items())
+	var id := BalanceStore.add_hero(name_edit.text, attack)
+	_selected_hero = id
+	_show_page("heroes")
+
+
+func _fill_item_list(column: VBoxContainer) -> void:
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(300, 560)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	for category in ["damage", "tempo", "vitality", "mobility", "guard", "active"]:
+		var found := false
+		for item in BalanceStore.items():
+			if item.category != category:
+				continue
+			if not found:
+				var heading := Label.new()
+				heading.text = category.capitalize()
+				heading.add_theme_font_size_override("font_size", 16)
+				heading.add_theme_color_override("font_color", Color(0.95, 0.84, 0.45))
+				list.add_child(heading)
+				found = true
+			var button := Button.new()
+			button.text = "%s    %d" % [item.display_name, item.price]
+			button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			if item.id == _selected_item:
+				button.modulate = Color(1.2, 1.1, 0.7)
+			button.pressed.connect(_select_item.bind(item.id))
+			list.add_child(button)
+	var add := Button.new()
+	add.text = "+ Add"
+	add.pressed.connect(_add_item)
+	column.add_child(add)
+
+
+func _select_item(item_id: String) -> void:
+	_write_selected_item()
+	_selected_item = item_id
+	_show_page("items")
 
 
 func _number_row(parent: Node, label_text: String, value: String) -> LineEdit:

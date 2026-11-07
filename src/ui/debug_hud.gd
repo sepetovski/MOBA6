@@ -41,6 +41,7 @@ const _MAP_HALF := 72.0
 var show_chrome := true
 var show_result := true
 var _dash_fills: Array[ColorRect] = []
+var _dash_tracks: Array[ColorRect] = []
 var _collision_root: Node3D
 var _collision_on := false
 var _freecam: Camera3D
@@ -307,7 +308,7 @@ func _update_score() -> void:
 func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 	if _player_bar == null:
 		return
-	_player_bar.position = Vector2(view.x * 0.5 - 380, view.y - 168)
+	_player_bar.position = Vector2(view.x * 0.5 - 460, view.y - 200)
 	if human == null:
 		return
 	_hero_label.text = "%s   %s" % [human.state.display_name, human.hero_name]
@@ -316,8 +317,15 @@ func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 	_hp_fill.color = Color(lerpf(0.86, 0.18, fraction), lerpf(0.22, 0.78, fraction), 0.22)
 	_hp_text.text = "%d / %d" % [int(round(human.state.health)), int(round(human.state.max_health))]
 	_pocket_gold.text = "GOLD  %d" % human.state.gold
+	var dash_slots := mini(human.motor.profile.dash_charges, _dash_fills.size())
 	for index in _dash_fills.size():
 		var pip := _dash_fills[index]
+		var track := _dash_tracks[index]
+		var shown := index < dash_slots
+		pip.visible = shown
+		track.visible = shown
+		if not shown:
+			continue
 		pip.size.x = 36.0 * human.motor.dash_fill(index)
 		if human.motor.dash_charges <= 0:
 			pip.color = Color(1.0, 0.78, 0.28)
@@ -330,7 +338,7 @@ func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 		var cd := 0.0 if ready else human.combat.ability_cooldown(slot)
 		var limit := 1.0 if ready else human.combat.ability_cooldown_max(slot)
 		var cooled := clampf(cd / limit, 0.0, 1.0)
-		_ability_covers[slot].size.y = 68.0 * cooled
+		_ability_covers[slot].size.y = 64.0 * cooled
 		_ability_times[slot].text = "ready" if cd <= 0.05 else "%.1f" % cd
 		if slot < human.combat.ability_count():
 			_ability_names[slot].text = human.combat.ability_name(slot)
@@ -445,83 +453,85 @@ func _build_clock() -> void:
 
 
 func _build_player_bar() -> void:
-	_player_bar = _framed(Vector2(760, 142), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
+	_player_bar = _framed(Vector2(920, 176), Color(0.05, 0.06, 0.08, 0.92), Color(0.95, 0.8, 0.32), 3)
 	var inner := _player_bar.get_child(0)
 	_hero_label = _text("Hero", 18, Color(0.95, 0.93, 0.86))
-	_hero_label.position = Vector2(16, 10)
+	_hero_label.position = Vector2(16, 8)
+	_hero_label.size = Vector2(320, 24)
 	inner.add_child(_hero_label)
 	var track := ColorRect.new()
 	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	track.color = Color(0.12, 0.08, 0.08)
-	track.position = Vector2(16, 40)
-	track.size = Vector2(252, 22)
+	track.position = Vector2(16, 36)
+	track.size = Vector2(300, 18)
 	inner.add_child(track)
 	_hp_fill = ColorRect.new()
 	_hp_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hp_fill.color = Color(0.2, 0.75, 0.28)
-	_hp_fill.position = Vector2(18, 42)
-	_hp_fill.size = Vector2(248, 18)
+	_hp_fill.position = Vector2(18, 38)
+	_hp_fill.size = Vector2(296, 14)
 	inner.add_child(_hp_fill)
 	_hp_text = _text("0 / 0", 14, Color(1, 1, 1))
-	_hp_text.position = Vector2(16, 64)
+	_hp_text.position = Vector2(16, 58)
 	inner.add_child(_hp_text)
-	_pocket_gold = _text("GOLD  0", 28, Color(1.0, 0.86, 0.28))
-	_pocket_gold.position = Vector2(16, 92)
+	_pocket_gold = _text("GOLD  0", 22, Color(1.0, 0.86, 0.28))
+	_pocket_gold.position = Vector2(16, 82)
+	_pocket_gold.size = Vector2(300, 28)
 	inner.add_child(_pocket_gold)
-	for slot in 2:
-		var origin := Vector2(300 + slot * 92, 16)
-		var plate := ColorRect.new()
-		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		plate.color = Color(0.16, 0.2, 0.28) if slot == 0 else Color(0.22, 0.16, 0.28)
-		plate.position = origin
-		plate.size = Vector2(78, 72)
-		inner.add_child(plate)
-		var cover := ColorRect.new()
-		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cover.color = Color(0.02, 0.02, 0.03, 0.72)
-		cover.position = origin
-		cover.size = Vector2(78, 0)
-		inner.add_child(cover)
-		var key := _text(ControlBindings.text_for("ability_1" if slot == 0 else "ability_2"), 22, Color(0.96, 0.94, 0.88))
-		key.position = origin + Vector2(8, 6)
-		inner.add_child(key)
-		var time := _text("ready", 14, Color(0.9, 0.88, 0.7))
-		time.position = origin + Vector2(8, 44)
-		inner.add_child(time)
-		var name := _text("", 13, Color(0.82, 0.8, 0.72))
-		name.position = Vector2(origin.x, 92)
-		name.size = Vector2(84, 36)
-		name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		inner.add_child(name)
-		_ability_covers.append(cover)
-		_ability_times.append(time)
-		_ability_names.append(name)
-	var dash_label := _text("Shift", 14, Color(0.82, 0.78, 0.64))
-	dash_label.position = Vector2(16, 90)
+	var dash_label := _text("Dashes", 14, Color(0.82, 0.78, 0.64))
+	dash_label.position = Vector2(16, 122)
 	inner.add_child(dash_label)
-	for index in 2:
+	for index in 4:
 		var dash_track := ColorRect.new()
 		dash_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		dash_track.color = Color(0.1, 0.1, 0.12)
-		dash_track.position = Vector2(70.0 + float(index) * 46.0, 94.0)
-		dash_track.size = Vector2(36, 10)
+		dash_track.position = Vector2(84.0 + float(index) * 46.0, 126.0)
+		dash_track.size = Vector2(36, 12)
 		inner.add_child(dash_track)
 		var pip := ColorRect.new()
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pip.color = Color(0.45, 0.78, 0.95)
 		pip.position = dash_track.position
-		pip.size = Vector2(36, 10)
+		pip.size = Vector2(36, 12)
 		inner.add_child(pip)
+		_dash_tracks.append(dash_track)
 		_dash_fills.append(pip)
+	for slot in 2:
+		var origin := Vector2(360 + slot * 96, 16)
+		var plate := ColorRect.new()
+		plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		plate.color = Color(0.16, 0.2, 0.28) if slot == 0 else Color(0.22, 0.16, 0.28)
+		plate.position = origin
+		plate.size = Vector2(84, 64)
+		inner.add_child(plate)
+		var cover := ColorRect.new()
+		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cover.color = Color(0.02, 0.02, 0.03, 0.72)
+		cover.position = origin
+		cover.size = Vector2(84, 0)
+		inner.add_child(cover)
+		var key := _text(ControlBindings.text_for("ability_1" if slot == 0 else "ability_2"), 22, Color(0.96, 0.94, 0.88))
+		key.position = origin + Vector2(8, 4)
+		inner.add_child(key)
+		var time := _text("ready", 14, Color(0.9, 0.88, 0.7))
+		time.position = origin + Vector2(8, 36)
+		inner.add_child(time)
+		var name := _text("", 13, Color(0.82, 0.8, 0.72))
+		name.position = Vector2(origin.x, 84)
+		name.size = Vector2(90, 20)
+		inner.add_child(name)
+		_ability_covers.append(cover)
+		_ability_times.append(time)
+		_ability_names.append(name)
 	var items := _text("Items", 14, Color(0.75, 0.72, 0.62))
-	items.position = Vector2(500, 8)
+	items.position = Vector2(580, 12)
 	inner.add_child(items)
 	for slot in 3:
 		var slot_box := ColorRect.new()
 		slot_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot_box.color = Color(0.1, 0.1, 0.12)
-		slot_box.position = Vector2(500 + slot * 72, 32)
-		slot_box.size = Vector2(60, 60)
+		slot_box.position = Vector2(580 + slot * 104, 36)
+		slot_box.size = Vector2(88, 88)
 		inner.add_child(slot_box)
 		var rim := ColorRect.new()
 		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -531,7 +541,7 @@ func _build_player_bar() -> void:
 		inner.add_child(rim)
 		inner.move_child(rim, slot_box.get_index())
 		var empty := _text("—", 20, Color(0.45, 0.42, 0.35))
-		empty.position = slot_box.position + Vector2(18, 16)
+		empty.position = slot_box.position + Vector2(32, 30)
 		inner.add_child(empty)
 	add_child(_player_bar)
 

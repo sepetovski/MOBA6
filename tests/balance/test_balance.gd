@@ -51,6 +51,17 @@ func test_flat_health_and_percent_damage_stack_from_the_base() -> void:
 	assert_almost_eq(next.attack_interval, 0.30, 0.001)
 
 
+func test_added_hero_uses_the_template_kit() -> void:
+	var id := BalanceStore.add_hero("Night Blade", "melee")
+	var hero := HeroCatalog.by_id(StringName(id))
+	assert_eq(hero.display_name, "Night Blade")
+	assert_eq(hero.stats.attack, UnitStats.Attack.MELEE)
+	assert_eq(hero.abilities.size(), 2)
+	assert_true(HeroCatalog.ids_for_role("melee").has(id))
+	assert_false(HeroCatalog.model_for(hero.id).is_empty())
+	BalanceStore.reset()
+
+
 func test_rules_round_trip() -> void:
 	var rules := BalanceStore.rules()
 	rules["match_seconds"] = 90.0
