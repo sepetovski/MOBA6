@@ -26,11 +26,13 @@ func _ready() -> void:
 	_arena = ArenaBuilder.build(layout, false)
 	add_child(_arena)
 	ArtDressing.attach(_arena)
+	var info := _arena.get_node("ArenaInfo") as ArenaInfo
+	ShopStall.build(_arena, info.shop_anchor(Team.Id.A), Team.Id.A)
+	ShopStall.build(_arena, info.shop_anchor(Team.Id.B), Team.Id.B)
 	_camera = MobaCamera.new()
 	_camera.name = "MobaCamera"
 	_camera.profile = load(CAMERA) as CameraProfile
 	add_child(_camera)
-	var info := _arena.get_node("ArenaInfo") as ArenaInfo
 	_camera.set_bounds(info.get_bounds().grow(28.0))
 	_camera.present(Vector3(0.0, 0.0, 6.0), 48.0, true)
 	_flow = MatchFlow.new()
@@ -38,6 +40,9 @@ func _ready() -> void:
 	_flow.set_arena_span(info.get_apothem())
 	add_child(_flow)
 	_flow.open_menu(_camera)
+	var admin := BalanceAdmin.new()
+	admin.name = "BalanceAdmin"
+	add_child(admin)
 	_flow.play_requested.connect(_on_play)
 	_flow.again_requested.connect(_on_again)
 	_flow.menu_requested.connect(_on_menu)
@@ -100,6 +105,10 @@ func _on_play() -> void:
 	_hud.show_result = false
 	add_child(_hud)
 	_hud.bind(_simulation, _camera)
+	var shop := SpawnShop.new()
+	shop.name = "SpawnShop"
+	add_child(shop)
+	shop.bind(_simulation)
 	var gates := GateController.new()
 	gates.name = "GateController"
 	add_child(gates)

@@ -11,12 +11,19 @@ var spawn_transform := Transform3D.IDENTITY
 var combat: Combat
 var hero_name := ""
 var aim_point := Vector3.INF
+var owned: PackedStringArray = []
+var base_stats: UnitStats
+var base_move: MovementProfile
+var base_guard := 1.0
+var damage_taken := 1.0
+var item_ready: Dictionary = {}
+var stun_until := 0
+var loadout_revision := -1
 
 
 func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID) -> void:
 	unit_id = id
 	team = team_id
-	var profile := hero.movement if hero.movement != null else MovementProfile.new()
 	state = UnitState.new()
 	state.unit_id = id
 	state.team = team_id
@@ -24,11 +31,17 @@ func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID)
 	var letter := "A" if team_id == Team.Id.A else "B"
 	state.display_name = "%s%d" % [letter, slot + 1]
 	hero_name = hero.display_name
-	state.max_health = hero.stats.max_health if hero.stats != null else 100.0
+	base_stats = hero.stats.duplicate(true) as UnitStats
+	base_move = (hero.movement if hero.movement != null else MovementProfile.new()).duplicate(true) as MovementProfile
+	base_guard = float(BalanceStore.hero_overlay(String(hero.id)).get("damage_taken", 1.0))
+	state.max_health = base_stats.max_health
 	state.health = state.max_health
+	state.gold = int(BalanceStore.rules()["start_gold"])
+	state.gold_earned = state.gold
 	combat = Combat.new()
 	combat.setup(self, hero)
-	motor = MovementMotor.new(self, profile, nav_map)
+	motor = MovementMotor.new(self, base_move.duplicate(true) as MovementProfile, nav_map)
+	reapply_loadout()
 	motor.landed.connect(func(fall_speed: float) -> void: GameEvents.unit_landed.emit(unit_id, fall_speed))
 	motor.stuck.connect(func() -> void: GameEvents.unit_stuck.emit(unit_id))
 	var view := UnitView.new()
@@ -36,7 +49,31 @@ func setup(id: int, hero: HeroDefinition, team_id: int, slot: int, nav_map: RID)
 	add_child(view)
 	view.bind(self)
 	set_meta("unit_id", unit_id)
-	set_meta("radius", profile.radius)
+	set_meta("radius", base_move.radius)
+
+
+func reapply_loadout() -> void:
+	var built := Loadout.apply(base_stats, base_move, base_guard, owned)
+	var stats := built["stats"] as UnitStats
+	var move := built["move"] as MovementProfile
+	var previous_max := state.max_health
+	var previous_charges := motor.profile.dash_charges
+	state.max_health = stats.max_health
+	state.health = minf(state.health + (state.max_health - previous_max), state.max_health)
+	if state.health < 1.0 and state.alive:
+		state.health = 1.0
+	combat.retune(stats)
+	var gained := move.dash_charges - previous_charges
+	motor.profile = move
+	if gained > 0:
+		motor.dash_charges += gained
+	motor.dash_charges = mini(motor.dash_charges, move.dash_charges)
+	damage_taken = float(built["guard"])
+	loadout_revision = BalanceStore.revision
+
+
+func owns(id: String) -> bool:
+	return owned.has(id)
 
 
 func place_at(spawn: Transform3D) -> void:
@@ -94,10 +131,21 @@ func apply_command(cmd: Command) -> void:
 
 
 func sim_step(dt: float, sim: Simulation) -> void:
-	if aim_point != Vector3.INF:
+	if loadout_revision != BalanceStore.revision:
+		reapply_loadout()
+	var stunned := stun_until > sim.tick
+	if aim_point != Vector3.INF and not stunned:
 		_face_aim(aim_point)
-	if combat != null:
+	if combat != null and not stunned:
 		combat.begin(dt, sim)
+	elif combat != null:
+		combat.set_trigger(false)
+	if stunned:
+		intent.stop = true
+		intent.steering = false
+		intent.has_move_target = false
+		intent.jump_held = false
+		intent.crouch_slide_held = false
 	motor.step(intent, dt)
 	if combat != null:
 		combat.finish()

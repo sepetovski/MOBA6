@@ -67,48 +67,66 @@ static func model_for(id: StringName) -> String:
 
 static func gladiator() -> HeroDefinition:
 	var hero := _base(&"gladiator", "Gladiator")
+	hero.movement = _move(4.3, 2, 5.0, 12.5)
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 16.0
-	hero.stats.attack_range = 3.4
-	hero.stats.attack_interval = 0.48
-	hero.stats.magazine = 8
-	hero.stats.reload_seconds = 1.7
+	hero.stats.max_health = 170.0
+	hero.stats.attack_damage = 18.0
+	hero.stats.attack_range = 3.2
+	hero.stats.attack_interval = 0.55
+	hero.stats.magazine = 7
+	hero.stats.reload_seconds = 1.8
 	hero.abilities = [
 		_slash(&"dash_strike", "Dash Strike", 24.0, 2.4, 6.5, 0.2, 6.0),
 		_kind(&"cleave", "Cleave", AbilityDefinition.Kind.SLASH, 16.0, 2.6, 4.0),
 	]
+	BalanceStore.apply_hero(hero)
 	return hero
 
 
 static func slinger() -> HeroDefinition:
 	var hero := _base(&"slinger", "Slinger")
+	hero.movement = _move(4.4, 2, 4.8, 12.5)
 	hero.stats.attack = UnitStats.Attack.RANGED
-	hero.stats.attack_damage = 7.0
-	hero.stats.attack_range = 16.0
-	hero.stats.attack_interval = 0.22
-	hero.stats.projectile_speed = 26.0
-	hero.stats.magazine = 18
-	hero.stats.reload_seconds = 1.35
+	hero.stats.max_health = 110.0
+	hero.stats.attack_damage = 12.0
+	hero.stats.attack_range = 14.0
+	hero.stats.attack_interval = 0.42
+	hero.stats.projectile_speed = 22.0
+	hero.stats.magazine = 10
+	hero.stats.reload_seconds = 1.6
 	hero.abilities = [
 		_bomb(),
 		_dash_only(&"backstep", "Backstep", 5.0, 0.16, 5.0, true),
 	]
+	BalanceStore.apply_hero(hero)
 	return hero
 
 
 static func skirmisher() -> HeroDefinition:
 	var hero := _base(&"skirmisher", "Skirmisher")
+	hero.movement = _move(5.0, 3, 3.8, 12.5)
 	hero.stats.attack = UnitStats.Attack.MELEE
-	hero.stats.attack_damage = 12.0
-	hero.stats.attack_range = 3.2
-	hero.stats.attack_interval = 0.4
-	hero.stats.magazine = 10
-	hero.stats.reload_seconds = 1.45
+	hero.stats.max_health = 125.0
+	hero.stats.attack_damage = 13.0
+	hero.stats.attack_range = 3.0
+	hero.stats.attack_interval = 0.45
+	hero.stats.magazine = 8
+	hero.stats.reload_seconds = 1.4
 	hero.abilities = [
 		_slash(&"lunge", "Lunge", 14.0, 1.6, 7.0, 0.18, 5.0),
 		_kind(&"whirl", "Whirl", AbilityDefinition.Kind.WHIRL, 14.0, 2.6, 6.0),
 	]
+	BalanceStore.apply_hero(hero)
 	return hero
+
+
+static func _move(run: float, charges: int, recharge: float, dash: float) -> MovementProfile:
+	var profile := (load("res://data/movement_profiles/gladiator.tres") as MovementProfile).duplicate(true) as MovementProfile
+	profile.run_speed = run
+	profile.dash_charges = charges
+	profile.dash_recharge = recharge
+	profile.dash_speed = dash
+	return profile
 
 
 static func _base(id: StringName, display_name: String) -> HeroDefinition:
@@ -117,7 +135,6 @@ static func _base(id: StringName, display_name: String) -> HeroDefinition:
 	hero.display_name = display_name
 	hero.stats = UnitStats.new()
 	hero.stats.max_health = 140.0
-	hero.movement = load("res://data/movement_profiles/gladiator.tres") as MovementProfile
 	return hero
 
 

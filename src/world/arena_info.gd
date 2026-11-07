@@ -30,6 +30,12 @@ func get_spawn_slot(team: int, slot: int) -> Transform3D:
 	var basis := ArenaMath.yaw_to_basis(yaw)
 	return Transform3D(basis, Vector3(x, 0.0, z))
 
+
+func shop_anchor(team: int) -> Vector3:
+	var spawn := get_spawn_slot(team, 0).origin
+	var toward_arena := 6.0 if team == Team.Id.A else -6.0
+	return Vector3(spawn.x + toward_arena, 0.0, 0.0)
+
 func get_bounds() -> AABB:
 	var verts := get_octagon_polygon()
 	var min_x := INF

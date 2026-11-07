@@ -27,6 +27,7 @@ const ACTIONS := {
 	"camera_pan_up": KEY_UP,
 	"camera_pan_down": KEY_DOWN,
 	"debug_help": KEY_F1,
+	"item": KEY_1,
 	"debug_collision": KEY_F2,
 	"debug_nav": KEY_F3,
 	"debug_freecam": KEY_F4,

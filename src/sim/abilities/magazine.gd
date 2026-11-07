@@ -43,3 +43,11 @@ func try_spend() -> bool:
 	if rounds <= 0:
 		reload_left = reload_seconds
 	return true
+
+
+func retune(next_capacity: int, next_reload: float, next_interval: float) -> void:
+	capacity = maxi(next_capacity, 1)
+	reload_seconds = maxf(next_reload, 0.05)
+	shot_interval = maxf(next_interval, 0.05)
+	if rounds > capacity:
+		rounds = capacity

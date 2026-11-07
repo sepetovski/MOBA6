@@ -7,7 +7,7 @@ class_name ControlBindings extends RefCounted
 const GAMEPLAY: PackedStringArray = [
 	"move_forward", "move_back", "move_left", "move_right",
 	"move_click", "fire", "jump", "crouch_slide", "dash", "stop",
-	"ability_1", "ability_2", "camera_lock",
+	"ability_1", "ability_2", "camera_lock", "item",
 ]
 
 const LABELS := {
@@ -24,6 +24,7 @@ const LABELS := {
 	"ability_1": "Ability 1",
 	"ability_2": "Ability 2",
 	"camera_lock": "Camera lock",
+	"item": "Item active",
 }
 
 
@@ -48,6 +49,7 @@ static func apply_preset(scheme: String) -> void:
 		_bind("ability_1", _key(KEY_Q))
 		_bind("ability_2", _key(KEY_E))
 		_bind("camera_lock", _key(KEY_Y))
+		_bind("item", _key(KEY_1))
 		return
 	_bind("move_click", _mouse(MOUSE_BUTTON_RIGHT))
 	_bind("fire", _mouse(MOUSE_BUTTON_LEFT))
@@ -58,6 +60,7 @@ static func apply_preset(scheme: String) -> void:
 	_bind("ability_1", _key(KEY_Q))
 	_bind("ability_2", _key(KEY_W))
 	_bind("camera_lock", _key(KEY_Y))
+	_bind("item", _key(KEY_1))
 
 
 static func set_event(action: String, event: InputEvent) -> void:

@@ -273,11 +273,11 @@ func _update_score() -> void:
 		_score_panel.position = Vector2(view.x - 292, 14)
 		if human == null:
 			_kda_numbers.text = "0 / 0 / 0"
-			_kda_detail.text = "0 gold    0 dmg"
+			_kda_detail.text = "GOLD 0"
 		else:
 			var state := human.state
 			_kda_numbers.text = "%d / %d / %d" % [state.kills, state.deaths, state.assists]
-			_kda_detail.text = "%d gold    %d dmg" % [state.gold, int(round(state.damage_dealt))]
+			_kda_detail.text = "GOLD %d    earned %d" % [state.gold, state.gold_earned]
 	if _clock_panel != null:
 		_clock_panel.position = Vector2(view.x * 0.5 - 210, 14)
 		var left := _sim.get_clock_seconds()
@@ -315,7 +315,7 @@ func _place_player_bar(view: Vector2, human: SimUnit) -> void:
 	_hp_fill.size.x = 248.0 * fraction
 	_hp_fill.color = Color(lerpf(0.86, 0.18, fraction), lerpf(0.22, 0.78, fraction), 0.22)
 	_hp_text.text = "%d / %d" % [int(round(human.state.health)), int(round(human.state.max_health))]
-	_pocket_gold.text = "%d gold" % human.state.gold
+	_pocket_gold.text = "GOLD  %d" % human.state.gold
 	for index in _dash_fills.size():
 		var pip := _dash_fills[index]
 		pip.size.x = 36.0 * human.motor.dash_fill(index)
@@ -465,8 +465,8 @@ func _build_player_bar() -> void:
 	_hp_text = _text("0 / 0", 14, Color(1, 1, 1))
 	_hp_text.position = Vector2(16, 64)
 	inner.add_child(_hp_text)
-	_pocket_gold = _text("0 gold", 18, Color(1.0, 0.86, 0.28))
-	_pocket_gold.position = Vector2(140, 62)
+	_pocket_gold = _text("GOLD  0", 28, Color(1.0, 0.86, 0.28))
+	_pocket_gold.position = Vector2(16, 92)
 	inner.add_child(_pocket_gold)
 	for slot in 2:
 		var origin := Vector2(300 + slot * 92, 16)

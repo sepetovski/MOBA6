@@ -88,6 +88,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"ability_2"):
 		_emit(Command.Kind.CAST, _ground_or_zero(), true, -1, 1)
 		_mark_handled()
+	elif InputMap.has_action(&"item") and event.is_action_pressed(&"item"):
+		_emit_item()
+		_mark_handled()
 
 
 func _physics_process(delta: float) -> void:
@@ -190,6 +193,20 @@ func _clear_hold() -> void:
 	if _firing:
 		_firing = false
 		_emit(Command.Kind.FIRE, _ground_or_zero(), false)
+
+
+func _emit_item() -> void:
+	var cmd := Command.new()
+	cmd.tick = 0
+	cmd.seq = _seq
+	_seq += 1
+	cmd.unit_id = _unit_id
+	cmd.kind = Command.Kind.ACTIVATE
+	cmd.point = _ground_or_zero()
+	cmd.item_id = ""
+	command_issued.emit(cmd)
+	if _sink.is_valid():
+		_sink.call(cmd)
 
 
 func _emit(kind: Command.Kind, point: Vector3, pressed: bool, target_id := -1, slot := -1) -> void:
