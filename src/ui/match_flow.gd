@@ -386,14 +386,15 @@ func _pick_role(role: String) -> void:
 	var profile := ProfileStore.current()
 	profile.set_role(role)
 	ProfileStore.save()
-	_refresh_profile()
+	# The click is still inside the button we are about to replace.
+	_refresh_profile.call_deferred()
 
 
 func _pick_hero(id: String) -> void:
 	var profile := ProfileStore.current()
 	profile.set_hero(id)
 	ProfileStore.save()
-	_refresh_profile()
+	_refresh_profile.call_deferred()
 
 
 func _commit_name() -> void:
@@ -421,6 +422,8 @@ func _refresh_profile() -> void:
 		child.free()
 	for id in HeroCatalog.ids_for_role(profile.role):
 		var hero := HeroCatalog.by_id(StringName(id))
+		if hero == null:
+			continue
 		var caption := "%s\n%s" % [hero.display_name, HeroCatalog.blurb(id)]
 		var button := _choice(caption, id == profile.hero_id)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT

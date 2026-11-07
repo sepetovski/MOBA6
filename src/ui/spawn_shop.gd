@@ -113,7 +113,8 @@ func _set_filter(category: String) -> void:
 
 func _rebuild() -> void:
 	for child in _cards.get_children():
-		child.queue_free()
+		_cards.remove_child(child)
+		child.free()
 	for index in CATEGORIES.size():
 		_filter_buttons[index].modulate = Color(1.2, 1.1, 0.7) if CATEGORIES[index] == _filter else Color.WHITE
 	for item in BalanceStore.items():
@@ -170,7 +171,9 @@ func _paint(human: SimUnit, at_stall: bool) -> void:
 		var item := BalanceStore.item(str(card.get_meta("item_id")))
 		if item == null:
 			continue
-		var button := card.get_node("Buy") as Button
+		var button := card.find_child("Buy", true, false) as Button
+		if button == null:
+			continue
 		if human.owns(item.id):
 			button.text = "Owned"
 			button.disabled = true
